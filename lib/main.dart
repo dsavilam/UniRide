@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import './ProviderState.dart';
 import './SelectUniversityPage.dart';
+import './SignUpPage.dart'; // <--- Importante
+import './HomePage.dart';   // <--- Importante
 
 void main() {
   runApp(
@@ -11,7 +13,6 @@ void main() {
         debugShowCheckedModeBanner: false,
         title: 'Carpooling Universitario',
         theme: ThemeData(
-          // Usamos un esquema de color limpio (Blanco/Negro) como base
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           scaffoldBackgroundColor: Colors.white,
           useMaterial3: true,
@@ -24,7 +25,8 @@ void main() {
         initialRoute: '/SELECT_UNI',
         routes: {
           '/SELECT_UNI': (context) => const SelectUniversityPage(),
-          // Aquí iremos agregando las siguientes rutas (Login, Home, etc.)
+          '/SIGNUP': (context) => const SignUpPage(), // <--- Nueva ruta
+          '/HOME': (context) => const HomePage(),     // <--- Nueva ruta
         },
       ),
     ),

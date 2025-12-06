@@ -39,7 +39,10 @@ class SelectUniversityPage extends StatelessWidget {
                       // Nota: Ya no usamos el color para teñir la imagen,
                       // pero lo dejo por si quieres usarlo luego para bordes o textos.
                       color: Colors.yellow.shade700,
-                      onTap: () => provider.selectUniversity('Andes'),
+                        onTap: () {
+                          provider.selectUniversity('Andes');
+                          Navigator.pushNamed(context, '/SIGNUP'); // <--- Agrega esta línea
+                        },
                     ),
                     const SizedBox(height: 30), // Aumenté un poco el espacio entre items
 
@@ -47,7 +50,10 @@ class SelectUniversityPage extends StatelessWidget {
                       name: 'Pontificia Universidad Javeriana',
                       assetPath: 'assets/logos/Javeriana.png',
                       color: Colors.blue.shade800,
-                      onTap: () => provider.selectUniversity('Javeriana'),
+                      onTap: () {
+                        provider.selectUniversity('Andes');
+                        Navigator.pushNamed(context, '/SIGNUP'); // <--- Agrega esta línea
+                      },
                     ),
                     const SizedBox(height: 30),
 
@@ -55,7 +61,10 @@ class SelectUniversityPage extends StatelessWidget {
                       name: 'Universidad del Rosario',
                       assetPath: 'assets/logos/Rosario.png',
                       color: Colors.red.shade900,
-                      onTap: () => provider.selectUniversity('Rosario'),
+                      onTap: () {
+                        provider.selectUniversity('Andes');
+                        Navigator.pushNamed(context, '/SIGNUP'); // <--- Agrega esta línea
+                      },
                     ),
                     const SizedBox(height: 30),
 
@@ -63,7 +72,10 @@ class SelectUniversityPage extends StatelessWidget {
                       name: 'Universidad Externado',
                       assetPath: 'assets/logos/Externado.png',
                       color: Colors.green.shade800,
-                      onTap: () => provider.selectUniversity('Externado'),
+                      onTap: () {
+                        provider.selectUniversity('Andes');
+                        Navigator.pushNamed(context, '/SIGNUP'); // <--- Agrega esta línea
+                      },
                     ),
                   ],
                 ),
