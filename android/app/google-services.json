@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "726906955924",
+    "firebase_url": "https://uni-ride-214d1-default-rtdb.firebaseio.com",
+    "project_id": "uni-ride-214d1",
+    "storage_bucket": "uni-ride-214d1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:726906955924:android:4eebb955b61e4f83616c81",
+        "android_client_info": {
+          "package_name": "com.uniride.uni_ride"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtDqpPZHa7aQhDSi_IoIDZYYiFFScS8yA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -56,7 +56,9 @@ class _SignUpPageState extends State<SignUpPage> {
       Navigator.of(context).pushNamedAndRemoveUntil('/HOME', (route) => false);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al registrar. Intenta nuevamente.')),
+        const SnackBar(
+          content: Text('Error al registrar. Intenta nuevamente.'),
+        ),
       );
     }
   }
@@ -80,6 +82,16 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 20),
+                // Logo
+                Center(
+                  child: Image.asset(
+                    'assets/UniRideLogoNOBG.png',
+                    height: 80,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 const Text(
                   'Regístrate',
                   textAlign: TextAlign.center,
@@ -185,13 +197,20 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                      height: 20, width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                  )
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Text(
-                    'Registrarme',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                          'Registrarme',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
 
                 const SizedBox(height: 20),
@@ -204,7 +223,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     GestureDetector(
                       onTap: () {
                         // Aquí iría la navegación al Login
-                        debugPrint("Ir a Login");
+                        Navigator.pushNamed(context, '/LOGIN');
                       },
                       child: Text(
                         'Inicia sesión',
@@ -215,7 +234,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
