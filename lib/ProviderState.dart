@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class ProviderState extends ChangeNotifier {
-
   // -- Variables de Estado --
   String? _selectedUniversity;
 
@@ -43,5 +42,16 @@ class ProviderState extends ChangeNotifier {
     await Future.delayed(const Duration(seconds: 1));
 
     return true; // Retorna true si el registro fue exitoso
+  }
+
+  // Simulación de login
+  Future<bool> loginUser({
+    required String usuario,
+    required String password,
+  }) async {
+    debugPrint("Iniciando sesión: $usuario");
+    await Future.delayed(const Duration(seconds: 1));
+    // Aquí iría la validación real
+    return true;
   }
 }

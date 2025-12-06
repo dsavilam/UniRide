@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import './ProviderState.dart';
 import './SelectUniversityPage.dart';
-import './SignUpPage.dart'; // <--- Importante
-import './HomePage.dart';   // <--- Importante
+import './SignUpPage.dart';
+import './LoginPage.dart'; // <--- Importante
+import './HomePage.dart'; // <--- Importante
 
 void main() {
   runApp(
@@ -25,8 +26,9 @@ void main() {
         initialRoute: '/SELECT_UNI',
         routes: {
           '/SELECT_UNI': (context) => const SelectUniversityPage(),
-          '/SIGNUP': (context) => const SignUpPage(), // <--- Nueva ruta
-          '/HOME': (context) => const HomePage(),     // <--- Nueva ruta
+          '/SIGNUP': (context) => const SignUpPage(),
+          '/LOGIN': (context) => const LoginPage(), // <--- Nueva ruta
+          '/HOME': (context) => const HomePage(),
         },
       ),
     ),
