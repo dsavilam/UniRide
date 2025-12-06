@@ -4,7 +4,6 @@ import './ProviderState.dart';
 import './SelectUniversityPage.dart';
 import './SignUpPage.dart'; // <--- Importante
 import './HomePage.dart';   // <--- Importante
-
 void main() {
   runApp(
     ChangeNotifierProvider(
@@ -26,7 +25,7 @@ void main() {
         routes: {
           '/SELECT_UNI': (context) => const SelectUniversityPage(),
           '/SIGNUP': (context) => const SignUpPage(), // <--- Nueva ruta
-          '/HOME': (context) => const HomePage(),     // <--- Nueva ruta
+          '/HOME': (context) => const HomePage(),
         },
       ),
     ),
