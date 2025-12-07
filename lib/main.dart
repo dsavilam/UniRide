@@ -7,7 +7,8 @@ import './SelectUniversityPage.dart';
 import './SignUpPage.dart';
 import './HomePage.dart';
 import './LoginPage.dart';
-import './ProfilePage.dart'; // <--- Importamos
+import './ProfilePage.dart';
+import './ScheduleTripPage.dart'; // <--- 1. Importamos la nueva pantalla
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,13 +30,14 @@ void main() async {
             iconTheme: IconThemeData(color: Colors.black),
           ),
         ),
-        initialRoute: '/SELECT_UNI', // OJO: Si ya tienes sesión iniciada, idealmente deberíamos chequearlo aquí, pero por ahora está bien.
+        initialRoute: '/SELECT_UNI',
         routes: {
           '/SELECT_UNI': (context) => const SelectUniversityPage(),
           '/SIGNUP': (context) => const SignUpPage(),
           '/HOME': (context) => const HomePage(),
           '/LOGIN': (context) => const LoginPage(),
-          '/PROFILE': (context) => const ProfilePage(), // <--- Nueva ruta
+          '/PROFILE': (context) => const ProfilePage(),
+          '/SCHEDULE': (context) => const ScheduleTripPage(), // <--- 2. Agregamos la ruta
         },
       ),
     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import './ScheduleTripPage.dart'; // <--- Importante: Importar para poder navegar
 
 class Vehicle {
   final String placa;
@@ -18,16 +19,15 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool _isPassenger = true; // Default to passenger
+  bool _isPassenger = true;
 
   // Estados para la vista del conductor
   String? _selectedVehiclePlaca = 'ABC123';
   List<Vehicle> _myVehicles = [
     Vehicle(placa: 'ABC123', modelo: 'Chevrolet Spark', color: 'Rojo'),
   ];
-  bool _showAddVehicleForm = false; // Controla si se muestra el formulario
+  bool _showAddVehicleForm = false;
 
-  // Controladores para los campos de texto del formulario
   final TextEditingController _placaController = TextEditingController();
   final TextEditingController _colorController = TextEditingController();
   final TextEditingController _modeloController = TextEditingController();
@@ -40,7 +40,6 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // Método para añadir un vehículo
   void _addVehicle() {
     final placa = _placaController.text.trim().toUpperCase();
     final modelo = _modeloController.text.trim();
@@ -75,14 +74,13 @@ class _HomePageState extends State<HomePage> {
       _placaController.clear();
       _colorController.clear();
       _modeloController.clear();
-      _showAddVehicleForm = false; // Ocultar el formulario después de agregar
+      _showAddVehicleForm = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Vehículo agregado correctamente")),
     );
   }
 
-  // Método para seleccionar un vehículo
   void _selectVehicle(String placa) {
     setState(() {
       _selectedVehiclePlaca = placa;
@@ -100,7 +98,7 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 20),
-              // Welcome Header con icono de menú
+              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -110,13 +108,13 @@ class _HomePageState extends State<HomePage> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.account_circle, color: Colors.grey[600], size: 30), // Cambié a icono de usuario que se ve mejor
+                    icon: Icon(Icons.account_circle, color: Colors.grey[600], size: 30),
                     onPressed: () {
                       Navigator.pushNamed(context, '/PROFILE');
                     },
@@ -148,12 +146,12 @@ class _HomePageState extends State<HomePage> {
                             borderRadius: BorderRadius.circular(25),
                             boxShadow: _isPassenger
                                 ? [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
                                 : [],
                           ),
                           child: Center(
@@ -182,12 +180,12 @@ class _HomePageState extends State<HomePage> {
                             borderRadius: BorderRadius.circular(25),
                             boxShadow: !_isPassenger
                                 ? [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
                                 : [],
                           ),
                           child: Center(
@@ -209,7 +207,6 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 32),
 
-              // Contenido condicional según el rol
               _isPassenger ? _buildPassengerView() : _buildDriverView(),
             ],
           ),
@@ -218,12 +215,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Vista del pasajero
   Widget _buildPassengerView() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Destination Question
         const Text(
           '¿A dónde te diriges?',
           style: TextStyle(
@@ -233,8 +228,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Search Bar
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -256,8 +249,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(height: 32),
-
-        // "Wheels" Section
         const Text(
           'Estos wheels te sirven',
           style: TextStyle(
@@ -267,8 +258,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // List of Wheels
         SizedBox(
           height: 400,
           child: ListView.separated(
@@ -283,7 +272,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Vista del conductor
   Widget _buildDriverView() {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
@@ -291,7 +279,6 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Sección de Vehículos Registrados
         Text(
           'Tus vehículos registrados',
           textAlign: TextAlign.center,
@@ -307,12 +294,10 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 20),
 
-        // Selector de vehículos
         _buildVehicleSelector(),
 
         const SizedBox(height: 40),
 
-        // Sección "Añade un vehículo" - clickeable
         GestureDetector(
           onTap: () {
             setState(() {
@@ -338,11 +323,8 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
 
-        // Mostrar formulario solo si está expandido
         if (_showAddVehicleForm) ...[
           const SizedBox(height: 20),
-
-          // Campos de formulario
           _buildInlineFormField(
             label: 'Placa:',
             controller: _placaController,
@@ -358,8 +340,6 @@ class _HomePageState extends State<HomePage> {
             controller: _modeloController,
           ),
           const SizedBox(height: 20),
-
-          // Botón "Agregar vehículo"
           Align(
             alignment: Alignment.centerLeft,
             child: ElevatedButton(
@@ -388,6 +368,7 @@ class _HomePageState extends State<HomePage> {
           height: 55,
           child: ElevatedButton(
             onPressed: () {
+              // 1. Validar que haya vehículo seleccionado
               if (_selectedVehiclePlaca == null || _myVehicles.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -396,13 +377,14 @@ class _HomePageState extends State<HomePage> {
                 );
                 return;
               }
-              debugPrint(
-                "Programar viaje presionado con vehículo: $_selectedVehiclePlaca",
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    "Programando viaje con vehículo: $_selectedVehiclePlaca",
+
+              // 2. Navegar a la pantalla de Programar Viaje
+              // Usamos MaterialPageRoute para poder pasar el dato del vehículo en el constructor
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ScheduleTripPage(
+                    selectedVehicle: _selectedVehiclePlaca, // Pasamos la placa
                   ),
                 ),
               );
@@ -426,7 +408,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget que muestra todos los vehículos y permite seleccionar uno
   Widget _buildVehicleSelector() {
     if (_myVehicles.isEmpty) {
       return Container(
@@ -469,24 +450,22 @@ class _HomePageState extends State<HomePage> {
                     : Border.all(color: Colors.grey[300]!, width: 1),
                 boxShadow: isSelected
                     ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
                     : null,
               ),
               child: Column(
                 children: [
-                  // Imagen del carro
                   Image.asset(
                     'assets/car-shape.png',
                     height: 40,
                     width: 80,
                     fit: BoxFit.contain,
-                    color: Colors
-                        .black87, // Optional: tint it if it's an icon/shape
+                    color: Colors.black87,
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -507,10 +486,10 @@ class _HomePageState extends State<HomePage> {
                         ),
                         child: isSelected
                             ? const Icon(
-                                Icons.check,
-                                color: Colors.white,
-                                size: 14,
-                              )
+                          Icons.check,
+                          color: Colors.white,
+                          size: 14,
+                        )
                             : null,
                       ),
                       const SizedBox(width: 12),
@@ -549,7 +528,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget para los campos de texto con la etiqueta al lado (inline)
   Widget _buildInlineFormField({
     required String label,
     required TextEditingController controller,
@@ -576,15 +554,15 @@ class _HomePageState extends State<HomePage> {
               maxLength: maxLength,
               inputFormatters: maxLength != null
                   ? [
-                      LengthLimitingTextInputFormatter(maxLength),
-                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
-                    ]
+                LengthLimitingTextInputFormatter(maxLength),
+                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+              ]
                   : null,
               textCapitalization: TextCapitalization.characters,
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                counterText: '', // Ocultar el contador de caracteres
+                counterText: '',
                 enabledBorder: UnderlineInputBorder(
                   borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
@@ -593,11 +571,11 @@ class _HomePageState extends State<HomePage> {
                 ),
                 suffixIcon: showClearIcon
                     ? IconButton(
-                        icon: const Icon(Icons.cancel, color: Colors.grey),
-                        onPressed: () => controller.clear(),
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      )
+                  icon: const Icon(Icons.cancel, color: Colors.grey),
+                  onPressed: () => controller.clear(),
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                )
                     : null,
               ),
             ),
