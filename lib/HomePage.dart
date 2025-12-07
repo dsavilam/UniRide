@@ -460,6 +460,7 @@ class _HomePageState extends State<HomePage> {
             },
             borderRadius: BorderRadius.circular(25),
             child: Container(
+              width: 180, // Increased fixed width
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: isSelected ? Colors.grey[200] : Colors.grey[100],
@@ -514,29 +515,33 @@ class _HomePageState extends State<HomePage> {
                             : null,
                       ),
                       const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            vehicle.placa,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? Colors.black87
-                                  : Colors.black54,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              vehicle.placa,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? Colors.black87
+                                    : Colors.black54,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          Text(
-                            vehicle.modelo,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
+                            Text(
+                              vehicle.modelo,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
