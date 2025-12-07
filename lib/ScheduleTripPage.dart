@@ -20,12 +20,14 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
   final TextEditingController _startingPointController = TextEditingController();
   final TextEditingController _destinationController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
+  final TextEditingController _fareController = TextEditingController();
 
   @override
   void dispose() {
     _startingPointController.dispose();
     _destinationController.dispose();
     _commentsController.dispose();
+    _fareController.dispose();
     super.dispose();
   }
 
@@ -78,6 +80,11 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     if (_destinationController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Por favor ingresa un punto de llegada")));
+      return;
+    }
+    if (_fareController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Por favor ingresa una tarifa")));
       return;
     }
 
@@ -143,6 +150,16 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                           ? '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
                           : null,
                       onTap: _selectTime,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Campo Tarifa
+                    _buildTextFieldWithIcon(
+                      label: 'Tarifa:',
+                      controller: _fareController,
+                      icon: Icons.attach_money,
+                      iconColor: Colors.green,
+                      keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 20),
 
@@ -387,6 +404,7 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     required IconData icon,
     required Color iconColor,
     int maxLines = 1,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,6 +421,7 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
         TextField(
           controller: controller,
           maxLines: maxLines,
+          keyboardType: keyboardType,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: iconColor),
             border: OutlineInputBorder(

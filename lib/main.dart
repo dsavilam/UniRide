@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // <--- Importante
 import 'firebase_options.dart';
@@ -28,6 +30,17 @@ void main() async {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Carpooling Universitario',
+        // Configuración de localización
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('es', 'ES'), // Español
+          Locale('en', 'US'), // Inglés
+        ],
+        locale: const Locale('es', 'ES'),
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           scaffoldBackgroundColor: Colors.white,
