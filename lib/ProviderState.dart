@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:latlong2/latlong.dart';
 
 // --- MODELOS ---
@@ -68,6 +70,10 @@ class TripModel {
 class ProviderState extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _db = FirebaseDatabase.instance.ref();
+  // Inicializar Storage con el bucket específico
+  final FirebaseStorage _storage = FirebaseStorage.instanceFor(
+    bucket: 'uni-ride-214d1.firebasestorage.app',
+  );
   final Distance _distanceCalculator = const Distance();
 
   String? _selectedUniversity;
@@ -99,6 +105,117 @@ class ProviderState extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) { debugPrint("Error perfil: $e"); }
+  }
+
+  // Método para subir foto de perfil a Firebase Storage y guardar URL
+  Future<String?> uploadProfilePhoto(File imageFile) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      debugPrint("Error: Usuario no autenticado");
+      return null;
+    }
+
+    try {
+      // Crear referencia en Storage: profile_photos/{userId}.jpg
+      final ref = _storage.ref().child('profile_photos/$uid.jpg');
+      
+      // Metadata para especificar el tipo de contenido
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        cacheControl: 'max-age=3600',
+      );
+      
+      // Subir el archivo con metadata
+      final uploadTask = ref.putFile(imageFile, metadata);
+      
+      // Esperar a que termine la subida
+      final snapshot = await uploadTask;
+      
+      // Verificar que la subida fue exitosa
+      if (snapshot.state == TaskState.success) {
+        // Obtener la URL de descarga
+        final String downloadUrl = await ref.getDownloadURL();
+        
+        // Guardar la URL en la base de datos
+        await _db.child('users/$uid/profile/photoUrl').set(downloadUrl);
+        
+        // Actualizar el perfil local
+        if (_userProfile != null) {
+          _userProfile!['photoUrl'] = downloadUrl;
+          notifyListeners();
+        }
+        
+        debugPrint("Foto subida exitosamente: $downloadUrl");
+        return downloadUrl;
+      } else {
+        debugPrint("Error: Estado de subida: ${snapshot.state}");
+        return null;
+      }
+    } on FirebaseException catch (e) {
+      debugPrint("Error Firebase subiendo foto: ${e.code} - ${e.message}");
+      if (e.code == 'unauthorized' || e.code == 'permission-denied') {
+        debugPrint("Error: Usuario no autorizado. Las reglas de Storage están bloqueando el acceso.");
+        debugPrint("Por favor configura las reglas en Firebase Console -> Storage -> Rules:");
+        debugPrint("rules_version = '2';");
+        debugPrint("service firebase.storage {");
+        debugPrint("  match /b/{bucket}/o {");
+        debugPrint("    match /profile_photos/{userId}.jpg {");
+        debugPrint("      allow read: if request.auth != null;");
+        debugPrint("      allow write: if request.auth != null && request.auth.uid == userId;");
+        debugPrint("    }");
+        debugPrint("  }");
+        debugPrint("}");
+      } else if (e.code == 'object-not-found' || e.code == 'not-found') {
+        debugPrint("Error: Firebase Storage no está configurado o las reglas bloquean el acceso");
+        debugPrint("Por favor verifica en Firebase Console:");
+        debugPrint("1. Que Storage esté habilitado");
+        debugPrint("2. Que las reglas permitan escritura para usuarios autenticados");
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Error general subiendo foto: $e");
+      return null;
+    }
+  }
+
+  // Método para eliminar foto de perfil
+  Future<bool> deleteProfilePhoto() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return false;
+
+    try {
+      // Eliminar de Storage
+      final ref = _storage.ref().child('profile_photos/$uid.jpg');
+      await ref.delete();
+      
+      // Eliminar URL de la base de datos
+      await _db.child('users/$uid/profile/photoUrl').remove();
+      
+      // Actualizar el perfil local
+      if (_userProfile != null) {
+        _userProfile!.remove('photoUrl');
+        notifyListeners();
+      }
+      
+      return true;
+    } on FirebaseException catch (e) {
+      debugPrint("Error Firebase eliminando foto: ${e.code} - ${e.message}");
+      // Si el archivo no existe, igualmente eliminamos la URL de la BD
+      try {
+        await _db.child('users/$uid/profile/photoUrl').remove();
+        if (_userProfile != null) {
+          _userProfile!.remove('photoUrl');
+          notifyListeners();
+        }
+        return true;
+      } catch (dbError) {
+        debugPrint("Error eliminando URL de BD: $dbError");
+        return false;
+      }
+    } catch (e) {
+      debugPrint("Error general eliminando foto: $e");
+      return false;
+    }
   }
 
   Future<void> loadVehicles() async {

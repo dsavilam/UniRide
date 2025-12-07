@@ -14,6 +14,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -26,6 +27,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // Método para mostrar el diálogo de selección de imagen
   Future<void> _showImageSourceDialog() async {
+    final provider = context.read<ProviderState>();
+    final profile = provider.userProfile;
+    
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -48,15 +52,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   _pickImage(ImageSource.camera);
                 },
               ),
-              if (_profileImage != null)
+              if (profile?['photoUrl'] != null || _profileImage != null)
                 ListTile(
                   leading: const Icon(Icons.delete, color: Colors.red),
                   title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
                   onTap: () {
                     Navigator.pop(context);
-                    setState(() {
-                      _profileImage = null;
-                    });
+                    _deletePhoto();
                   },
                 ),
             ],
@@ -79,14 +81,71 @@ class _ProfilePageState extends State<ProfilePage> {
       if (image != null) {
         setState(() {
           _profileImage = File(image.path);
+          _isUploading = true;
         });
-        // Aquí podrías subir la imagen a Firebase Storage si lo necesitas
-        // await _uploadImageToFirebase(_profileImage!);
+
+        // Subir la imagen a Firebase Storage
+        final provider = context.read<ProviderState>();
+        final url = await provider.uploadProfilePhoto(_profileImage!);
+
+        if (mounted) {
+          setState(() {
+            _isUploading = false;
+          });
+
+          if (url != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Foto de perfil actualizada correctamente')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Error al subir la foto')),
+            );
+            setState(() {
+              _profileImage = null;
+            });
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _profileImage = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al seleccionar imagen: $e')),
+        );
+      }
+    }
+  }
+
+  // Método auxiliar para obtener la imagen de perfil
+  ImageProvider? _getProfileImage(Map<String, dynamic> profile) {
+    if (_profileImage != null) {
+      return FileImage(_profileImage!);
+    } else if (profile['photoUrl'] != null && profile['photoUrl'].toString().isNotEmpty) {
+      return NetworkImage(profile['photoUrl']);
+    }
+    return null;
+  }
+
+  // Método para eliminar foto
+  Future<void> _deletePhoto() async {
+    final provider = context.read<ProviderState>();
+    final success = await provider.deleteProfilePhoto();
+
+    if (mounted) {
+      if (success) {
+        setState(() {
+          _profileImage = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto eliminada correctamente')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al eliminar la foto')),
         );
       }
     }
@@ -113,43 +172,46 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 10),
                   // Avatar grande (clickeable)
                   GestureDetector(
-                    onTap: _showImageSourceDialog,
+                    onTap: _isUploading ? null : _showImageSourceDialog,
                     child: Stack(
                       children: [
                         CircleAvatar(
                           radius: 50,
                           backgroundColor: Colors.grey.shade200,
-                          backgroundImage: _profileImage != null
-                              ? FileImage(_profileImage!)
-                              : null,
-                          child: _profileImage == null
-                              ? Text(
-                                  profile['fullName'] != null &&
-                                          profile['fullName'].isNotEmpty
-                                      ? profile['fullName'][0].toUpperCase()
-                                      : "U",
-                                  style: TextStyle(
-                                      fontSize: 40, color: Colors.blue.shade800),
-                                )
-                              : null,
+                          backgroundImage: _isUploading
+                              ? null
+                              : _getProfileImage(profile),
+                          child: _isUploading
+                              ? const CircularProgressIndicator()
+                              : (_profileImage == null && profile['photoUrl'] == null)
+                                  ? Text(
+                                      profile['fullName'] != null &&
+                                              profile['fullName'].isNotEmpty
+                                          ? profile['fullName'][0].toUpperCase()
+                                          : "U",
+                                      style: TextStyle(
+                                          fontSize: 40, color: Colors.blue.shade800),
+                                    )
+                                  : null,
                         ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 20,
+                        if (!_isUploading)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
