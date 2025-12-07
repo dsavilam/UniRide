@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import './ScheduleTripPage.dart'; // <--- Importante: Importar para poder navegar
-
-class Vehicle {
-  final String placa;
-  final String modelo;
-  final String color;
-
-  Vehicle({required this.placa, required this.modelo, required this.color});
-}
+import 'package:provider/provider.dart'; // <--- Importante para leer el estado
+import './ProviderState.dart'; // <--- Importante para acceder a VehicleModel y lógica
+import './ScheduleTripPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,15 +16,23 @@ class _HomePageState extends State<HomePage> {
   bool _isPassenger = true;
 
   // Estados para la vista del conductor
-  String? _selectedVehiclePlaca = 'ABC123';
-  List<Vehicle> _myVehicles = [
-    Vehicle(placa: 'ABC123', modelo: 'Chevrolet Spark', color: 'Rojo'),
-  ];
+  String? _selectedVehiclePlaca; // Solo guardamos la placa seleccionada
   bool _showAddVehicleForm = false;
 
   final TextEditingController _placaController = TextEditingController();
   final TextEditingController _colorController = TextEditingController();
   final TextEditingController _modeloController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Carga inicial de datos (Perfil y Vehículos) desde Firebase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<ProviderState>();
+      provider.loadUserProfile();
+      provider.loadVehicles();
+    });
+  }
 
   @override
   void dispose() {
@@ -40,7 +42,8 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _addVehicle() {
+  // Método para añadir un vehículo a Firebase
+  void _addVehicle() async {
     final placa = _placaController.text.trim().toUpperCase();
     final modelo = _modeloController.text.trim();
     final color = _colorController.text.trim();
@@ -54,31 +57,44 @@ class _HomePageState extends State<HomePage> {
 
     if (placa.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("La placa debe tener exactamente 6 caracteres"),
-        ),
+        const SnackBar(content: Text("La placa debe tener exactamente 6 caracteres")),
       );
       return;
     }
 
-    if (_myVehicles.any((v) => v.placa == placa)) {
+    // Llamada a Firebase a través del Provider
+    final provider = context.read<ProviderState>();
+
+    // Validamos localmente si ya existe en la lista descargada
+    if (provider.vehicles.any((v) => v.placa == placa)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Este vehículo ya está registrado")),
       );
       return;
     }
 
-    setState(() {
-      _myVehicles.add(Vehicle(placa: placa, modelo: modelo, color: color));
-      _selectedVehiclePlaca = placa;
-      _placaController.clear();
-      _colorController.clear();
-      _modeloController.clear();
-      _showAddVehicleForm = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Vehículo agregado correctamente")),
-    );
+    final success = await provider.addVehicle(placa, modelo, color);
+
+    if (success) {
+      setState(() {
+        _selectedVehiclePlaca = placa; // Seleccionamos el nuevo automáticamente
+        _placaController.clear();
+        _colorController.clear();
+        _modeloController.clear();
+        _showAddVehicleForm = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Vehículo agregado correctamente")),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Error al guardar en la base de datos")),
+        );
+      }
+    }
   }
 
   void _selectVehicle(String placa) {
@@ -89,6 +105,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Escuchamos los cambios en el provider para actualizar la lista de vehículos
+    final provider = context.watch<ProviderState>();
+    final myVehicles = provider.vehicles;
+    final userName = provider.userProfile?['fullName'] ?? '¡Bienvenid@!';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -104,10 +125,9 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Expanded(
                     child: Text(
-                      '¡Bienvenid@!',
+                      userName.contains(' ') ? "Hola, ${userName.split(' ')[0]}" : userName,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
@@ -125,7 +145,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 24),
 
-              // Toggle Switch
+              // Toggle Switch (Pasajero / Conductor)
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
@@ -140,29 +160,16 @@ class _HomePageState extends State<HomePage> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: _isPassenger
-                                ? Colors.white
-                                : Colors.transparent,
+                            color: _isPassenger ? Colors.white : Colors.transparent,
                             borderRadius: BorderRadius.circular(25),
                             boxShadow: _isPassenger
-                                ? [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
+                                ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))]
                                 : [],
                           ),
                           child: Center(
                             child: Text(
                               'Soy pasajero',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: _isPassenger
-                                    ? Colors.black
-                                    : Colors.grey[600],
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.w600, color: _isPassenger ? Colors.black : Colors.grey[600]),
                             ),
                           ),
                         ),
@@ -174,29 +181,16 @@ class _HomePageState extends State<HomePage> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: !_isPassenger
-                                ? Colors.white
-                                : Colors.transparent,
+                            color: !_isPassenger ? Colors.white : Colors.transparent,
                             borderRadius: BorderRadius.circular(25),
                             boxShadow: !_isPassenger
-                                ? [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
+                                ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))]
                                 : [],
                           ),
                           child: Center(
                             child: Text(
                               'Soy conductor',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: !_isPassenger
-                                    ? Colors.black
-                                    : Colors.grey[600],
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.w600, color: !_isPassenger ? Colors.black : Colors.grey[600]),
                             ),
                           ),
                         ),
@@ -207,7 +201,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 32),
 
-              _isPassenger ? _buildPassengerView() : _buildDriverView(),
+              _isPassenger ? _buildPassengerView() : _buildDriverView(myVehicles),
             ],
           ),
         ),
@@ -221,11 +215,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         const Text(
           '¿A dónde te diriges?',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
         ),
         const SizedBox(height: 16),
         Container(
@@ -239,10 +229,7 @@ class _HomePageState extends State<HomePage> {
               Icon(CupertinoIcons.search, color: Colors.grey[600]),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Search',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                ),
+                child: Text('Buscar destino...', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
               ),
               Icon(CupertinoIcons.mic_fill, color: Colors.grey[600]),
             ],
@@ -251,11 +238,7 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 32),
         const Text(
           'Estos wheels te sirven',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: Colors.black,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black),
         ),
         const SizedBox(height: 16),
         SizedBox(
@@ -272,7 +255,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildDriverView() {
+  Widget _buildDriverView(List<VehicleModel> myVehicles) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
@@ -282,9 +265,7 @@ class _HomePageState extends State<HomePage> {
         Text(
           'Tus vehículos registrados',
           textAlign: TextAlign.center,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -294,7 +275,8 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 20),
 
-        _buildVehicleSelector(),
+        // Selector de vehículos con animación
+        _buildVehicleSelector(myVehicles),
 
         const SizedBox(height: 40),
 
@@ -307,17 +289,13 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             children: [
               Icon(
-                _showAddVehicleForm
-                    ? Icons.remove_circle_outline
-                    : Icons.add_circle_outline,
+                _showAddVehicleForm ? Icons.remove_circle_outline : Icons.add_circle_outline,
                 color: Colors.black,
               ),
               const SizedBox(width: 8),
               Text(
                 'Añade un vehículo',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -347,44 +325,35 @@ class _HomePageState extends State<HomePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              child: const Text('Agregar vehículo'),
+              child: const Text('Guardar vehículo'),
             ),
           ),
         ],
 
         const SizedBox(height: 40),
 
-        // Botón Principal "Programar viaje"
         SizedBox(
           width: double.infinity,
           height: 55,
           child: ElevatedButton(
             onPressed: () {
-              // 1. Validar que haya vehículo seleccionado
-              if (_selectedVehiclePlaca == null || _myVehicles.isEmpty) {
+              // 1. Validar selección
+              if (_selectedVehiclePlaca == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Por favor selecciona un vehículo"),
-                  ),
+                  const SnackBar(content: Text("Por favor selecciona un vehículo")),
                 );
                 return;
               }
 
-              // 2. Navegar a la pantalla de Programar Viaje
-              // Usamos MaterialPageRoute para poder pasar el dato del vehículo en el constructor
+              // 2. Navegar
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ScheduleTripPage(
-                    selectedVehicle: _selectedVehiclePlaca, // Pasamos la placa
+                    selectedVehicle: _selectedVehiclePlaca,
                   ),
                 ),
               );
@@ -392,9 +361,7 @@ class _HomePageState extends State<HomePage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 2,
             ),
             child: const Text(
@@ -408,8 +375,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildVehicleSelector() {
-    if (_myVehicles.isEmpty) {
+  Widget _buildVehicleSelector(List<VehicleModel> vehicles) {
+    if (vehicles.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -417,115 +384,98 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Text(
-          'No tienes vehículos registrados',
+          'No tienes vehículos registrados. Añade uno abajo.',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey),
         ),
       );
     }
 
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Wrap(
       spacing: 12,
       runSpacing: 12,
       alignment: WrapAlignment.center,
-      children: _myVehicles.map((vehicle) {
+      children: vehicles.map((vehicle) {
         final isSelected = _selectedVehiclePlaca == vehicle.placa;
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              _selectVehicle(vehicle.placa);
-            },
-            borderRadius: BorderRadius.circular(25),
-            child: Container(
-              width: 180, // Increased fixed width
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.grey[200] : Colors.grey[100],
-                borderRadius: BorderRadius.circular(25),
-                border: isSelected
-                    ? Border.all(color: primaryColor.withOpacity(0.5), width: 2)
-                    : Border.all(color: Colors.grey[300]!, width: 1),
-                boxShadow: isSelected
-                    ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-                    : null,
+
+        // --- ANIMACIÓN DE SELECCIÓN ---
+        return GestureDetector(
+          onTap: () => _selectVehicle(vehicle.placa),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            width: 160, // Ancho fijo para consistencia
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              // Si está seleccionado, fondo azul muy claro. Si no, gris claro.
+              color: isSelected ? Colors.blue.shade50 : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(25),
+              // Borde azul y más grueso si está seleccionado
+              border: Border.all(
+                color: isSelected ? primaryColor : Colors.grey.shade300,
+                width: isSelected ? 2.0 : 1.0,
               ),
-              child: Column(
-                children: [
-                  Image.asset(
+              boxShadow: isSelected
+                  ? [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+                  : [],
+            ),
+            child: Column(
+              children: [
+                // Animación de escala para el icono
+                AnimatedScale(
+                  scale: isSelected ? 1.1 : 1.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: Image.asset(
                     'assets/car-shape.png',
                     height: 40,
                     width: 80,
                     fit: BoxFit.contain,
-                    color: Colors.black87,
+                    color: isSelected ? Colors.black87 : Colors.grey.shade700,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: isSelected ? primaryColor : Colors.transparent,
-                          border: Border.all(
-                            color: isSelected
-                                ? primaryColor
-                                : Colors.grey[600]!,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: isSelected
-                            ? const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 14,
-                        )
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              vehicle.placa,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: isSelected
-                                    ? Colors.black87
-                                    : Colors.black54,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              vehicle.modelo,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSelected) ...[
+                      Icon(Icons.check_circle, color: primaryColor, size: 16),
+                      const SizedBox(width: 6),
                     ],
-                  ),
-                ],
-              ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vehicle.placa,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected ? Colors.blue.shade900 : Colors.black54,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            vehicle.modelo,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         );
@@ -611,22 +561,18 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Title',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.black,
-                ),
+                'Viaje Andes -> Casa',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
               ),
               const SizedBox(height: 4),
               Text(
-                'Description',
+                'Juan Perez • 4.8★',
                 style: TextStyle(color: Colors.grey[500], fontSize: 14),
               ),
             ],
           ),
           Text(
-            '9:41 AM',
+            '5:30 PM',
             style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
         ],

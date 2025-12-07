@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // <--- Importante
 import 'package:provider/provider.dart';
 
 import './ProviderState.dart';
@@ -8,11 +9,15 @@ import './SignUpPage.dart';
 import './HomePage.dart';
 import './LoginPage.dart';
 import './ProfilePage.dart';
-import './ScheduleTripPage.dart'; // <--- 1. Importamos la nueva pantalla
+import './ScheduleTripPage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Verificamos si hay usuario logueado
+  final User? currentUser = FirebaseAuth.instance.currentUser;
+  final String rutaInicial = currentUser != null ? '/HOME' : '/SELECT_UNI';
 
   runApp(
     ChangeNotifierProvider(
@@ -30,14 +35,14 @@ void main() async {
             iconTheme: IconThemeData(color: Colors.black),
           ),
         ),
-        initialRoute: '/SELECT_UNI',
+        initialRoute: rutaInicial, // <--- Usamos la variable calculada
         routes: {
           '/SELECT_UNI': (context) => const SelectUniversityPage(),
           '/SIGNUP': (context) => const SignUpPage(),
           '/HOME': (context) => const HomePage(),
           '/LOGIN': (context) => const LoginPage(),
           '/PROFILE': (context) => const ProfilePage(),
-          '/SCHEDULE': (context) => const ScheduleTripPage(), // <--- 2. Agregamos la ruta
+          '/SCHEDULE': (context) => const ScheduleTripPage(),
         },
       ),
     ),
