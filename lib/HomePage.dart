@@ -57,7 +57,8 @@ class _HomePageState extends State<HomePage> {
 
     if (placa.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("La placa debe tener exactamente 6 caracteres")),
+        const SnackBar(
+            content: Text("La placa debe tener exactamente 6 caracteres")),
       );
       return;
     }
@@ -125,16 +126,20 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Expanded(
                     child: Text(
-                      userName.contains(' ') ? "Hola, ${userName.split(' ')[0]}" : userName,
+                      userName.contains(' ')
+                          ? "Hola, ${userName.split(' ')[0]}"
+                          : userName,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.account_circle, color: Colors.grey[600], size: 30),
+                    icon: Icon(Icons.account_circle,
+                        color: Colors.grey[600], size: 30),
                     onPressed: () {
                       Navigator.pushNamed(context, '/PROFILE');
                     },
@@ -160,16 +165,27 @@ class _HomePageState extends State<HomePage> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: _isPassenger ? Colors.white : Colors.transparent,
+                            color: _isPassenger
+                                ? Colors.white
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(25),
                             boxShadow: _isPassenger
-                                ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))]
+                                ? [
+                                    BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2))
+                                  ]
                                 : [],
                           ),
                           child: Center(
                             child: Text(
                               'Soy pasajero',
-                              style: TextStyle(fontWeight: FontWeight.w600, color: _isPassenger ? Colors.black : Colors.grey[600]),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: _isPassenger
+                                      ? Colors.black
+                                      : Colors.grey[600]),
                             ),
                           ),
                         ),
@@ -181,16 +197,27 @@ class _HomePageState extends State<HomePage> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: !_isPassenger ? Colors.white : Colors.transparent,
+                            color: !_isPassenger
+                                ? Colors.white
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(25),
                             boxShadow: !_isPassenger
-                                ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))]
+                                ? [
+                                    BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2))
+                                  ]
                                 : [],
                           ),
                           child: Center(
                             child: Text(
                               'Soy conductor',
-                              style: TextStyle(fontWeight: FontWeight.w600, color: !_isPassenger ? Colors.black : Colors.grey[600]),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: !_isPassenger
+                                      ? Colors.black
+                                      : Colors.grey[600]),
                             ),
                           ),
                         ),
@@ -201,7 +228,9 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 32),
 
-              _isPassenger ? _buildPassengerView() : _buildDriverView(myVehicles),
+              _isPassenger
+                  ? _buildPassengerView()
+                  : _buildDriverView(myVehicles),
             ],
           ),
         ),
@@ -215,7 +244,8 @@ class _HomePageState extends State<HomePage> {
       children: [
         const Text(
           '¿A dónde te diriges?',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+          style: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
         ),
         const SizedBox(height: 16),
         Container(
@@ -229,7 +259,8 @@ class _HomePageState extends State<HomePage> {
               Icon(CupertinoIcons.search, color: Colors.grey[600]),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Buscar destino...', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+                child: Text('Buscar destino...',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16)),
               ),
               Icon(CupertinoIcons.mic_fill, color: Colors.grey[600]),
             ],
@@ -238,7 +269,8 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 32),
         const Text(
           'Estos wheels te sirven',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black),
+          style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black),
         ),
         const SizedBox(height: 16),
         SizedBox(
@@ -265,7 +297,8 @@ class _HomePageState extends State<HomePage> {
         Text(
           'Tus vehículos registrados',
           textAlign: TextAlign.center,
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -289,13 +322,16 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             children: [
               Icon(
-                _showAddVehicleForm ? Icons.remove_circle_outline : Icons.add_circle_outline,
+                _showAddVehicleForm
+                    ? Icons.remove_circle_outline
+                    : Icons.add_circle_outline,
                 color: Colors.black,
               ),
               const SizedBox(width: 8),
               Text(
                 'Añade un vehículo',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -325,8 +361,10 @@ class _HomePageState extends State<HomePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               child: const Text('Guardar vehículo'),
             ),
@@ -343,7 +381,8 @@ class _HomePageState extends State<HomePage> {
               // 1. Validar selección
               if (_selectedVehiclePlaca == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Por favor selecciona un vehículo")),
+                  const SnackBar(
+                      content: Text("Por favor selecciona un vehículo")),
                 );
                 return;
               }
@@ -361,7 +400,8 @@ class _HomePageState extends State<HomePage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               elevation: 2,
             ),
             child: const Text(
@@ -419,12 +459,12 @@ class _HomePageState extends State<HomePage> {
               ),
               boxShadow: isSelected
                   ? [
-                BoxShadow(
-                  color: primaryColor.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ]
+                      BoxShadow(
+                        color: primaryColor.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
                   : [],
             ),
             child: Column(
@@ -457,8 +497,12 @@ class _HomePageState extends State<HomePage> {
                             vehicle.placa,
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              color: isSelected ? Colors.blue.shade900 : Colors.black54,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.blue.shade900
+                                  : Colors.black54,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -509,9 +553,9 @@ class _HomePageState extends State<HomePage> {
               maxLength: maxLength,
               inputFormatters: maxLength != null
                   ? [
-                LengthLimitingTextInputFormatter(maxLength),
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
-              ]
+                      LengthLimitingTextInputFormatter(maxLength),
+                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                    ]
                   : null,
               textCapitalization: TextCapitalization.characters,
               decoration: InputDecoration(
@@ -526,11 +570,11 @@ class _HomePageState extends State<HomePage> {
                 ),
                 suffixIcon: showClearIcon
                     ? IconButton(
-                  icon: const Icon(Icons.cancel, color: Colors.grey),
-                  onPressed: () => controller.clear(),
-                  constraints: const BoxConstraints(),
-                  padding: EdgeInsets.zero,
-                )
+                        icon: const Icon(Icons.cancel, color: Colors.grey),
+                        onPressed: () => controller.clear(),
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                      )
                     : null,
               ),
             ),
@@ -562,7 +606,10 @@ class _HomePageState extends State<HomePage> {
             children: [
               const Text(
                 'Viaje Andes -> Casa',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.black),
               ),
               const SizedBox(height: 4),
               Text(

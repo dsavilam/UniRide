@@ -21,7 +21,25 @@ void main() async {
   );
 
   // Verificamos si hay usuario logueado
-  final User? currentUser = FirebaseAuth.instance.currentUser;
+  // Verificamos si hay usuario logueado Y verificado
+  User? currentUser = FirebaseAuth.instance.currentUser;
+
+  // Si existe pero no está verificado (o el token es inválido por haber sido borrado), lo sacamos
+  if (currentUser != null) {
+    try {
+      // Forzamos la recarga del usuario para verificar si sigue existiendo en el backend
+      await currentUser.reload();
+      if (!currentUser.emailVerified) {
+        await FirebaseAuth.instance.signOut();
+        currentUser = null;
+      }
+    } catch (e) {
+      // Si reload falla (ej: user-not-found), cerramos sesión
+      await FirebaseAuth.instance.signOut();
+      currentUser = null;
+    }
+  }
+
   final String rutaInicial = currentUser != null ? '/HOME' : '/SELECT_UNI';
 
   runApp(

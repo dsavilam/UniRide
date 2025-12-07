@@ -134,7 +134,8 @@ class ProviderState extends ChangeNotifier {
     _errorMessage = null;
     try {
       // 1. Crear usuario
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
         email: correo.trim(),
         password: password.trim(),
       );
@@ -145,7 +146,7 @@ class ProviderState extends ChangeNotifier {
       // =======================================================
       if (userCredential.user != null && !userCredential.user!.emailVerified) {
         await userCredential.user!.sendEmailVerification();
-        debugPrint("✅ Correo de verificación enviado a $correo");
+        debugPrint("Correo de verificación enviado a $correo");
       }
       // =======================================================
 
@@ -197,10 +198,28 @@ class ProviderState extends ChangeNotifier {
         return false;
       }
 
-      await _auth.signInWithEmailAndPassword(
+      // 1. Autenticar con Firebase
+      final UserCredential userCredential =
+          await _auth.signInWithEmailAndPassword(
         email: usuario.trim(),
         password: password.trim(),
       );
+
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        // IMPORTANTE: Recargar el usuario para obtener el estado más reciente de emailVerified
+        await user.reload();
+
+        // 2. Verificar si el correo está validado
+        if (!user.emailVerified) {
+          _errorMessage =
+              "Tu correo no ha sido verificado. Revisa tu bandeja de entrada.";
+          await _auth.signOut();
+          notifyListeners();
+          return false;
+        }
+      }
 
       await loadUserProfile();
       await loadVehicles();
