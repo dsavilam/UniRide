@@ -256,7 +256,6 @@ class _HomePageState extends State<HomePage> {
     final provider = context.watch<ProviderState>();
     final myVehicles = provider.vehicles;
     final userName = provider.userProfile?['fullName'] ?? '¡Bienvenid@!';
-    // Obtenemos la URL de la foto
     final photoUrl = provider.userProfile?['photoUrl'];
 
     return Scaffold(
@@ -268,36 +267,36 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 10), // Ajuste pequeño de margen superior
-                // --- HEADER MEJORADO ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment
-                      .spaceBetween, // Espacio entre texto e imagen
-                  crossAxisAlignment:
-                      CrossAxisAlignment.center, // Alineación vertical perfecta
-                  children: [
+                const SizedBox(height: 10),
+
+                // ... (HEADER y TOGGLE SWITCH se mantienen igual que tu código original) ...
+
+            // --- NUEVO: LOGO DE UNIRIDE ---
+            Center(
+              child: Image.asset(
+                'assets/UniRideLogo&TextNOBG.png', // Usamos el logo completo sin fondo
+                height: 40, // Altura controlada para que no sea invasivo
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(height: 20),
+            // ------------------------------
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text("Hola,", style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
                           Text(
-                            "Hola,",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          Text(
-                            userName.contains(' ')
-                                ? userName.split(' ')[0]
-                                : userName,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineMedium
-                                ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                    height: 1.1), // Altura de línea ajustada
+                            userName.contains(' ') ? userName.split(' ')[0] : userName,
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                height: 1.1),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -305,32 +304,24 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // FOTO DE PERFIL
                     GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/PROFILE'),
                       child: Hero(
-                        tag:
-                            'profile-pic', // Animación bonita si en profile usas Hero también
+                        tag: 'profile-pic',
                         child: CircleAvatar(
-                          radius: 28, // Tamaño 56px (más grande que antes)
+                          radius: 28,
                           backgroundColor: Colors.grey.shade200,
-                          // Si hay foto, la muestra. Si no, null.
-                          backgroundImage: (photoUrl != null &&
-                                  photoUrl.toString().isNotEmpty)
+                          backgroundImage: (photoUrl != null && photoUrl.toString().isNotEmpty)
                               ? NetworkImage(photoUrl)
                               : null,
-                          // Si NO hay foto, muestra el icono
-                          child:
-                              (photoUrl == null || photoUrl.toString().isEmpty)
-                                  ? Icon(Icons.person,
-                                      color: Colors.grey.shade400, size: 32)
-                                  : null,
+                          child: (photoUrl == null || photoUrl.toString().isEmpty)
+                              ? Icon(Icons.person, color: Colors.grey.shade400, size: 32)
+                              : null,
                         ),
                       ),
                     ),
                   ],
                 ),
-                // -----------------------
 
                 const SizedBox(height: 24),
 
@@ -348,26 +339,15 @@ class _HomePageState extends State<HomePage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: _isPassenger
-                                  ? Colors.white
-                                  : Colors.transparent,
+                              color: _isPassenger ? Colors.white : Colors.transparent,
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: _isPassenger
-                                  ? [
-                                      BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2))
-                                    ]
+                                  ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))]
                                   : [],
                             ),
                             child: Center(
                                 child: Text('Soy pasajero',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: _isPassenger
-                                            ? Colors.black
-                                            : Colors.grey[600]))),
+                                    style: TextStyle(fontWeight: FontWeight.w600, color: _isPassenger ? Colors.black : Colors.grey[600]))),
                           ),
                         ),
                       ),
@@ -377,26 +357,15 @@ class _HomePageState extends State<HomePage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: !_isPassenger
-                                  ? Colors.white
-                                  : Colors.transparent,
+                              color: !_isPassenger ? Colors.white : Colors.transparent,
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: !_isPassenger
-                                  ? [
-                                      BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2))
-                                    ]
+                                  ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))]
                                   : [],
                             ),
                             child: Center(
                                 child: Text('Soy conductor',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: !_isPassenger
-                                            ? Colors.black
-                                            : Colors.grey[600]))),
+                                    style: TextStyle(fontWeight: FontWeight.w600, color: !_isPassenger ? Colors.black : Colors.grey[600]))),
                           ),
                         ),
                       ),
@@ -405,10 +374,28 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 32),
 
-                // Vista Condicional
+                // Vista Condicional (Aquí termina la lógica actual)
                 _isPassenger
                     ? _buildPassengerView(provider)
                     : _buildDriverView(provider, myVehicles),
+
+                // ---------------------------------------------------------
+                // --- AQUI AÑADIMOS LA IMAGEN DE TOTTO AL FINAL ---
+                // ---------------------------------------------------------
+                const SizedBox(height: 40), // Espacio separador superior
+
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20.0), // Bordes redondeados
+                  child: Image.asset(
+                    'assets/Totto.jpg',
+                    fit: BoxFit.cover, // Ajusta la imagen para cubrir el espacio
+                    width: double.infinity, // Ocupa el ancho disponible
+                    // height: 150, // Descomenta si quieres forzar una altura fija
+                  ),
+                ),
+
+                const SizedBox(height: 20), // Espacio final para que no pegue abajo
+                // ---------------------------------------------------------
               ],
             ),
           ),
