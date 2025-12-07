@@ -709,6 +709,19 @@ class ProviderState extends ChangeNotifier {
           'ratingCount': ratingCount +
               1 // Siempre incrementamos el conteo de calificaciones
         });
+
+        // ACTUALIZACIÓN LOCAL INMEDIATA
+        // Si el usuario calificado es el usuario logueado (ej: conductor se califica a sí mismo? No, pero si yo soy el usuario...)
+        // O si queremos que el perfil refleje cambios.
+        // En este caso, 'userId' es a quien calificamos.
+        // Si 'userId' == _auth.currentUser?.uid, actualizamos el estado local.
+        if (_auth.currentUser?.uid == userId && _userProfile != null) {
+          _userProfile!['rating'] = newRating;
+          _userProfile!['completedTrips'] = newTripsCount;
+          _userProfile!['ratingCount'] = ratingCount + 1;
+          notifyListeners();
+        }
+
         return true;
       }
       return false;
