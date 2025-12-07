@@ -12,11 +12,8 @@ class TripDetailsPage extends StatefulWidget {
   final TripModel trip;
   final LatLng passengerOrigin;
 
-  const TripDetailsPage({
-    super.key,
-    required this.trip,
-    required this.passengerOrigin
-  });
+  const TripDetailsPage(
+      {super.key, required this.trip, required this.passengerOrigin});
 
   @override
   State<TripDetailsPage> createState() => _TripDetailsPageState();
@@ -27,7 +24,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
   // Rutas
   List<LatLng> _routeToPickup = []; // Caminata del pasajero (Punteada)
-  List<LatLng> _driverRoute = [];   // Ruta del carro (Azul sólida)
+  List<LatLng> _driverRoute = []; // Ruta del carro (Azul sólida)
 
   // Estado
   String _currentStatus = "active";
@@ -37,7 +34,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _currentStatus = widget.trip.id.isEmpty ? "active" : "active"; // Valor inicial
+    _currentStatus =
+        widget.trip.id.isEmpty ? "active" : "active"; // Valor inicial
 
     // 1. Cargar ruta del conductor (La que viene de la BD)
     _loadDriverRoute();
@@ -82,7 +80,10 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
       // Si usaste el código que te pasé antes, ya debería estar en la BD.
 
       // Recuperamos directamente de la BD si el modelo no lo trajo completo
-      FirebaseDatabase.instance.ref('trips/${widget.trip.id}/routePolyline').get().then((snapshot) {
+      FirebaseDatabase.instance
+          .ref('trips/${widget.trip.id}/routePolyline')
+          .get()
+          .then((snapshot) {
         if (snapshot.exists) {
           final List<dynamic> points = snapshot.value as List<dynamic>;
           setState(() {
@@ -90,7 +91,6 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
           });
         }
       });
-
     } catch (e) {
       debugPrint("Error cargando ruta conductor: $e");
     }
@@ -113,7 +113,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
         if (mounted) {
           setState(() {
             _routeToPickup = coordinates
-                .map((coord) => LatLng(coord[1].toDouble(), coord[0].toDouble()))
+                .map(
+                    (coord) => LatLng(coord[1].toDouble(), coord[0].toDouble()))
                 .toList();
           });
         }
@@ -127,9 +128,11 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
   void _cancelTrip() async {
     final provider = context.read<ProviderState>();
-    final success = await provider.cancelTripReservation(widget.trip.id, widget.trip.availableSeats);
+    final success = await provider.cancelTripReservation(
+        widget.trip.id, widget.trip.availableSeats);
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Reserva cancelada")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Reserva cancelada")));
       Navigator.pop(context);
     }
   }
@@ -192,7 +195,9 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                 initialZoom: 14.0,
               ),
               children: [
-                TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+                TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
 
                 // 1. Ruta del Conductor (Azul Gruesa)
                 PolylineLayer(
@@ -224,20 +229,27 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                     // Yo
                     Marker(
                       point: widget.passengerOrigin,
-                      width: 60, height: 60,
-                      child: const Icon(Icons.person_pin_circle, color: Colors.purple, size: 40),
+                      width: 60,
+                      height: 60,
+                      child: const Icon(Icons.person_pin_circle,
+                          color: Colors.purple, size: 40),
                     ),
                     // Carro (Origen del viaje)
                     Marker(
                       point: pickupPoint,
-                      width: 60, height: 60,
-                      child: const Icon(Icons.directions_car, color: Colors.blue, size: 40),
+                      width: 60,
+                      height: 60,
+                      child: const Icon(Icons.directions_car,
+                          color: Colors.blue, size: 40),
                     ),
                     // Destino
                     Marker(
-                      point: LatLng(trip.destination['lat'], trip.destination['lng']),
-                      width: 60, height: 60,
-                      child: const Icon(Icons.flag, color: Colors.red, size: 40),
+                      point: LatLng(
+                          trip.destination['lat'], trip.destination['lng']),
+                      width: 60,
+                      height: 60,
+                      child:
+                          const Icon(Icons.flag, color: Colors.red, size: 40),
                     ),
                   ],
                 ),
@@ -250,7 +262,12 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
               color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, -5))
+              ],
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Column(
@@ -265,14 +282,22 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(trip.driverName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          Text("${trip.vehicle['placa']} • ${trip.vehicle['modelo']}", style: TextStyle(color: Colors.grey[600])),
+                          Text(trip.driverName,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(
+                              "${trip.vehicle['placa']} • ${trip.vehicle['modelo']}",
+                              style: TextStyle(color: Colors.grey[600])),
                         ],
                       ),
                     ),
                     Column(
                       children: [
-                        Text("\$${trip.price.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
+                        Text("\$${trip.price.toStringAsFixed(0)}",
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.green)),
                         const Text("COP", style: TextStyle(fontSize: 10)),
                       ],
                     )
@@ -304,7 +329,11 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                     ),
                   )
                 else
-                  const Center(child: Text("Viaje finalizado", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                  const Center(
+                      child: Text("Viaje finalizado",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey))),
               ],
             ),
           ),
@@ -318,14 +347,15 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 class RateDriverDialog extends StatefulWidget {
   final String driverId;
   final String driverName;
-  const RateDriverDialog({super.key, required this.driverId, required this.driverName});
+  const RateDriverDialog(
+      {super.key, required this.driverId, required this.driverName});
 
   @override
   State<RateDriverDialog> createState() => _RateDriverDialogState();
 }
 
 class _RateDriverDialogState extends State<RateDriverDialog> {
-  double _rating = 0;
+  double _rating = 5.0;
 
   @override
   Widget build(BuildContext context) {
@@ -356,7 +386,9 @@ class _RateDriverDialogState extends State<RateDriverDialog> {
           onPressed: () async {
             if (_rating > 0) {
               final provider = context.read<ProviderState>();
-              await provider.rateUser(widget.driverId, _rating);
+              // El conductor ya incrementó su cuenta al finalizar el viaje, solo actualizamos el rating
+              await provider.rateUser(widget.driverId, _rating,
+                  incrementCount: false);
             }
             if (mounted) Navigator.pop(context);
           },

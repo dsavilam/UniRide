@@ -390,6 +390,15 @@ class _RatePassengersDialogState extends State<RatePassengersDialog> {
   final Map<String, double> _ratings = {};
 
   @override
+  void initState() {
+    super.initState();
+    // Pre-llenar con 5 estrellas para asegurar que se envíe algo
+    for (var p in widget.passengers) {
+      _ratings[p['uid']] = 5.0;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text("¡Viaje Finalizado!"),
@@ -445,7 +454,8 @@ class _RatePassengersDialogState extends State<RatePassengersDialog> {
           onPressed: () async {
             final provider = context.read<ProviderState>();
             for (var entry in _ratings.entries) {
-              await provider.rateUser(entry.key, entry.value);
+              await provider.rateUser(entry.key, entry.value,
+                  incrementCount: true);
             }
             if (mounted) Navigator.pop(context);
           },

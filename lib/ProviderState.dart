@@ -560,7 +560,8 @@ class ProviderState extends ChangeNotifier {
         'university': _selectedUniversity ?? 'Desc',
         'phone': celular.trim(),
         'rating': 5.0,
-        'completedTrips': 0
+        'completedTrips': 0,
+        'ratingCount': 0
       };
       await _db.child('users/$uid/profile').set(pData);
       _userProfile = pData;
@@ -632,6 +633,14 @@ class ProviderState extends ChangeNotifier {
   Future<bool> updateTripStatus(String tripId, String newStatus) async {
     try {
       await _db.child('trips/$tripId').update({'status': newStatus});
+
+      // Si el viaje finalizó, incrementamos el contador del conductor (usuario actual)
+      if (newStatus == 'finished') {
+        final uid = _auth.currentUser?.uid;
+        if (uid != null) {
+          await _incrementUserTrips(uid);
+        }
+      }
       return true;
     } catch (e) {
       debugPrint("Error actualizando estado: $e");
@@ -639,22 +648,67 @@ class ProviderState extends ChangeNotifier {
     }
   }
 
+  Future<void> _incrementUserTrips(String uid) async {
+    try {
+      final ref = _db.child('users/$uid/profile/completedTrips');
+      final snapshot = await ref.get();
+      int current = 0;
+      if (snapshot.exists) {
+        current = (snapshot.value is num)
+            ? (snapshot.value as num).toInt()
+            : int.tryParse(snapshot.value.toString()) ?? 0;
+      }
+      await ref.set(current + 1);
+
+      // Si es el usuario actual, actualizamos el estado local
+      if (_userProfile != null && _auth.currentUser?.uid == uid) {
+        _userProfile!['completedTrips'] = current + 1;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Error incrementing trips: $e");
+    }
+  }
+
   // 3. Calificar usuario (Conductor a Pasajero o viceversa)
-  Future<bool> rateUser(String userId, double rating) async {
+  Future<bool> rateUser(String userId, double rating,
+      {bool incrementCount = true}) async {
     try {
       final userRef = _db.child('users/$userId/profile');
       final snapshot = await userRef.get();
 
       if (snapshot.exists) {
         final data = Map<String, dynamic>.from(snapshot.value as Map);
-        double currentRating = (data['rating'] ?? 5.0).toDouble();
-        int trips = (data['completedTrips'] ?? 0);
+        double currentRating = (data['rating'] is num)
+            ? (data['rating'] as num).toDouble()
+            : double.tryParse(data['rating'].toString()) ?? 5.0;
 
-        // Nuevo promedio ponderado
-        double newRating = ((currentRating * trips) + rating) / (trips + 1);
+        int trips = (data['completedTrips'] is num)
+            ? (data['completedTrips'] as num).toInt()
+            : int.tryParse(data['completedTrips'].toString()) ?? 0;
 
-        await userRef
-            .update({'rating': newRating, 'completedTrips': trips + 1});
+        // NUEVO: Usamos ratingCount para el promedio real
+        int ratingCount = (data['ratingCount'] is num)
+            ? (data['ratingCount'] as num).toInt()
+            : int.tryParse(data['ratingCount'].toString()) ??
+                trips; // Fallback a trips si no existe
+
+        // Calculamos nuevo promedio basado en ratingCount
+        // Promedio = ( (OldAvg * OldCount) + NewVal ) / (OldCount + 1)
+        double newRating =
+            ((currentRating * ratingCount) + rating) / (ratingCount + 1);
+
+        int newTripsCount = trips;
+        if (incrementCount) {
+          newTripsCount = trips + 1;
+        }
+
+        await userRef.update({
+          'rating': newRating,
+          'completedTrips': newTripsCount,
+          'ratingCount': ratingCount +
+              1 // Siempre incrementamos el conteo de calificaciones
+        });
         return true;
       }
       return false;
