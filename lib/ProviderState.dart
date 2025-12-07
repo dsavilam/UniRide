@@ -32,7 +32,7 @@ class ProviderState extends ChangeNotifier {
   final DatabaseReference _db = FirebaseDatabase.instance.ref();
 
   // -- Variables de Estado --
-  String? _selectedUniversity; // Aquí se guardará lo que venga de SelectUniversityPage
+  String? _selectedUniversity;
   String? _errorMessage;
   Map<String, dynamic>? _userProfile;
   List<VehicleModel> _vehicles = [];
@@ -54,7 +54,6 @@ class ProviderState extends ChangeNotifier {
   // -- Helpers --
   void selectUniversity(String universityName) {
     _selectedUniversity = universityName;
-    // Esto imprime en consola para que verifiques que está llegando el dato correcto
     debugPrint("Universidad seleccionada: $_selectedUniversity");
     notifyListeners();
   }
@@ -134,6 +133,7 @@ class ProviderState extends ChangeNotifier {
   }) async {
     _errorMessage = null;
     try {
+      // 1. Crear usuario
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: correo.trim(),
         password: password.trim(),
@@ -141,7 +141,15 @@ class ProviderState extends ChangeNotifier {
 
       final String uid = userCredential.user!.uid;
 
-      // Aquí usamos la variable _selectedUniversity que seteamos en la pantalla anterior
+      // 2. ENVIAR CORREO DE VERIFICACIÓN (AQUÍ ESTABA EL ERROR)
+      // =======================================================
+      if (userCredential.user != null && !userCredential.user!.emailVerified) {
+        await userCredential.user!.sendEmailVerification();
+        debugPrint("✅ Correo de verificación enviado a $correo");
+      }
+      // =======================================================
+
+      // 3. Guardar datos en Base de Datos
       final profileData = {
         'fullName': nombre,
         'email': correo.trim(),
@@ -170,6 +178,7 @@ class ProviderState extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
+      debugPrint("Error inesperado en registro: $e");
       _errorMessage = 'Ocurrió un error inesperado al registrar.';
       notifyListeners();
       return false;

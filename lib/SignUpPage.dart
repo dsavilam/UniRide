@@ -47,19 +47,19 @@ class _SignUpPageState extends State<SignUpPage> {
 
     setState(() => _isLoading = true);
 
-    // Llamada al registro con TODOS los datos
+    // Llamada al registro en el Provider (el cual ahora envía el correo)
     final success = await provider.registerUser(
       nombre: "${_nombreCtrl.text} ${_apellidoCtrl.text}",
       correo: _correoCtrl.text,
       usuario: _usuarioCtrl.text,
-      password: _passCtrl.text, // <--- Faltaba esto
-      celular: _celularCtrl.text, // <--- Faltaba esto
+      password: _passCtrl.text,
+      celular: _celularCtrl.text,
     );
 
     setState(() => _isLoading = false);
 
     if (success && mounted) {
-      // Mostrar diálogo de verificación
+      // Mostrar diálogo de éxito
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -67,7 +67,7 @@ class _SignUpPageState extends State<SignUpPage> {
           title: const Text('¡Registro Exitoso!'),
           content: const Text(
             'Hemos enviado un enlace de verificación a tu correo institucional.\n\n'
-            'Por favor verifica tu cuenta antes de iniciar sesión.',
+                'Revisa también tu carpeta de SPAM si no lo ves en la bandeja de entrada.',
           ),
           actions: [
             TextButton(
@@ -82,7 +82,7 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
       );
     } else if (mounted) {
-      // Mostramos el mensaje de error específico que viene del Provider
+      // Mostrar error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(provider.errorMessage ?? 'Error al registrar.'),
@@ -94,7 +94,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Escuchamos al provider (read está bien aquí porque no redibujamos por cambios externos)
     final provider = context.read<ProviderState>();
 
     return Scaffold(
@@ -112,11 +111,14 @@ class _SignUpPageState extends State<SignUpPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
+                // Asegúrate de tener este asset o comenta la línea si falla
                 Center(
                   child: Image.asset(
                     'assets/UniRideLogoNOBG.png',
                     height: 80,
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.directions_car, size: 80),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -156,8 +158,9 @@ class _SignUpPageState extends State<SignUpPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'El correo es obligatorio';
+                    }
                     if (!provider.validateEmailDomain(value)) {
                       return 'Usa un correo institucional válido';
                     }
@@ -202,8 +205,9 @@ class _SignUpPageState extends State<SignUpPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Ingresa tu celular';
+                    }
                     return null;
                   },
                 ),
@@ -220,13 +224,13 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
                       : const Text('Registrarme',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
 
                 const SizedBox(height: 20),
@@ -253,8 +257,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Widget _buildTextField(
       {required String label,
-      required TextEditingController controller,
-      required IconData icon}) {
+        required TextEditingController controller,
+        required IconData icon}) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
@@ -263,7 +267,7 @@ class _SignUpPageState extends State<SignUpPage> {
         border: const OutlineInputBorder(),
       ),
       validator: (value) =>
-          (value == null || value.isEmpty) ? 'Este campo es obligatorio' : null,
+      (value == null || value.isEmpty) ? 'Este campo es obligatorio' : null,
     );
   }
 }
