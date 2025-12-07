@@ -22,8 +22,11 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
   final MapController _mapController = MapController();
   LatLng? _origin;
   LatLng? _destination;
+  LatLng? _waypoint; // <--- Nuevo punto intermedio
   List<LatLng> _routePoints = [];
-  bool _isSelectingOrigin = true;
+
+  // 0: Origen, 1: Destino, 2: Punto Intermedio
+  int _selectionMode = 0;
 
   Timer? _debounce;
 
@@ -32,8 +35,11 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
   TimeOfDay? _selectedTime;
 
   // Controladores
-  final TextEditingController _startingPointController = TextEditingController();
+  final TextEditingController _startingPointController =
+      TextEditingController();
   final TextEditingController _destinationController = TextEditingController();
+  final TextEditingController _waypointController =
+      TextEditingController(); // <--- Nuevo controlador
   final TextEditingController _commentsController = TextEditingController();
   final TextEditingController _fareController = TextEditingController();
   final TextEditingController _capacityController = TextEditingController();
@@ -58,19 +64,19 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
       }
 
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high
-      );
+          desiredAccuracy: LocationAccuracy.high);
 
       if (mounted) {
         setState(() {
           _origin = LatLng(position.latitude, position.longitude);
-          _startingPointController.text = "Mi Ubicación Actual"; // Feedback visual inicial
+          _startingPointController.text =
+              "Mi Ubicación Actual"; // Feedback visual inicial
           _mapController.move(_origin!, 15.0); // Mover cámara
         });
 
         // Opcional: Obtener dirección real de la ubicación actual
         _getAddressFromLatLng(_origin!).then((address) {
-          if(mounted) setState(() => _startingPointController.text = address);
+          if (mounted) setState(() => _startingPointController.text = address);
         });
       }
     } catch (e) {
@@ -83,6 +89,7 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     _debounce?.cancel();
     _startingPointController.dispose();
     _destinationController.dispose();
+    _waypointController.dispose(); // <--- Dispose
     _commentsController.dispose();
     _fareController.dispose();
     _capacityController.dispose();
@@ -95,7 +102,8 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
       final url = Uri.parse(
           'https://nominatim.openstreetmap.org/reverse?format=json&lat=${point.latitude}&lon=${point.longitude}&zoom=18&addressdetails=1');
 
-      final response = await http.get(url, headers: {'User-Agent': 'com.uniride.app'});
+      final response =
+          await http.get(url, headers: {'User-Agent': 'com.uniride.app'});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -116,31 +124,33 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
 
   // --- LÓGICA DEL MAPA (TAP) ---
   void _onMapTap(TapPosition tapPosition, LatLng point) async {
-    // 1. Actualizamos marcador visualmente
     setState(() {
-      if (_isSelectingOrigin) {
+      if (_selectionMode == 0) {
         _origin = point;
         _startingPointController.text = "Buscando dirección...";
-      } else {
+      } else if (_selectionMode == 1) {
         _destination = point;
         _destinationController.text = "Buscando dirección...";
+      } else {
+        _waypoint = point;
+        _waypointController.text = "Buscando dirección...";
       }
     });
 
-    // 2. Buscamos la dirección (Async)
     final String address = await _getAddressFromLatLng(point);
 
-    // 3. Actualizamos el texto final
     if (mounted) {
       setState(() {
-        if (_isSelectingOrigin) {
+        if (_selectionMode == 0) {
           _startingPointController.text = address;
-        } else {
+        } else if (_selectionMode == 1) {
           _destinationController.text = address;
+        } else {
+          _waypointController.text = address;
         }
       });
 
-      // 4. Si tenemos ambos, trazamos ruta
+      // Recalcular ruta si tenemos al menos origen y destino
       if (_origin != null && _destination != null) {
         _getRoute();
       }
@@ -148,52 +158,50 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
   }
 
   // --- LÓGICA DE BÚSQUEDA (TEXTO -> COORDENADAS) ---
-  void _onSearchChanged(String query, bool isOrigin) {
+  List<dynamic> _addressSuggestions = [];
+
+  // mode: 0=Origin, 1=Dest, 2=Waypoint
+  void _onSearchChanged(String query, int mode) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-    // Esperamos 1.5s para no saturar la API
-    _debounce = Timer(const Duration(milliseconds: 1500), () {
-      if (query.isNotEmpty && query != "Buscando dirección..." && query != "Mi Ubicación Actual") {
-        _searchPlace(query, isOrigin);
+    // Actualizamos estado para saber qué campo se está editando
+    setState(() => _selectionMode = mode);
+
+    // Esperamos 500ms para no saturar la API
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (query.isNotEmpty &&
+          query != "Buscando dirección..." &&
+          query != "Mi Ubicación Actual") {
+        _fetchAddressSuggestions(query);
+      } else {
+        setState(() => _addressSuggestions = []);
       }
     });
   }
 
-  Future<void> _searchPlace(String query, bool isOrigin) async {
+  Future<void> _fetchAddressSuggestions(String query) async {
     setState(() => _isLoadingRoute = true);
+    // Bounding Box ampliado: Bogotá + Soacha + Chía + Cajicá + La Calera
+    const String viewBox = "-74.30,4.40,-73.90,5.00";
 
-    // Bounding Box Bogotá
-    const String viewBox = "-74.26,4.46,-73.96,4.84";
-
-    final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1&viewbox=$viewBox&bounded=1'
-    );
+    final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+      'q': query,
+      'format': 'json',
+      'limit': '10',
+      'viewbox': viewBox,
+      'bounded': '1',
+      'addressdetails': '1'
+    });
 
     try {
-      final response = await http.get(url, headers: {'User-Agent': 'com.uniride.app'});
-
+      final response =
+          await http.get(uri, headers: {'User-Agent': 'com.uniride.app'});
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
-
-        if (data.isNotEmpty) {
-          final lat = double.parse(data[0]['lat']);
-          final lon = double.parse(data[0]['lon']);
-          final point = LatLng(lat, lon);
-
+        if (mounted) {
           setState(() {
-            if (isOrigin) {
-              _origin = point;
-            } else {
-              _destination = point;
-            }
+            _addressSuggestions = data;
           });
-
-          // Movemos mapa
-          _mapController.move(point, 15.0);
-
-          if (_origin != null && _destination != null) {
-            _getRoute();
-          }
         }
       }
     } catch (e) {
@@ -203,20 +211,59 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     }
   }
 
+  void _selectSuggestion(dynamic suggestion) {
+    final lat = double.parse(suggestion['lat']);
+    final lon = double.parse(suggestion['lon']);
+    final point = LatLng(lat, lon);
+    final displayName = suggestion['display_name'].toString().split(',')[0];
+
+    setState(() {
+      if (_selectionMode == 0) {
+        _origin = point;
+        _startingPointController.text = displayName;
+      } else if (_selectionMode == 1) {
+        _destination = point;
+        _destinationController.text = displayName;
+      } else {
+        _waypoint = point;
+        _waypointController.text = displayName;
+      }
+      _addressSuggestions = []; // Limpiar lista
+      FocusScope.of(context).unfocus(); // Cerrar teclado
+    });
+
+    // Mover mapa y trazar ruta
+    _mapController.move(point, 15.0);
+    if (_origin != null && _destination != null) {
+      _getRoute();
+    }
+  }
+
   // --- OSRM ROUTING ---
   Future<void> _getRoute() async {
+    // Construimos la URL con o sin waypoint
+    String coordinates = "${_origin!.longitude},${_origin!.latitude}";
+
+    if (_waypoint != null) {
+      coordinates += ";${_waypoint!.longitude},${_waypoint!.latitude}";
+    }
+
+    coordinates += ";${_destination!.longitude},${_destination!.latitude}";
+
     final url = Uri.parse(
-        'http://router.project-osrm.org/route/v1/driving/${_origin!.longitude},${_origin!.latitude};${_destination!.longitude},${_destination!.latitude}?overview=full&geometries=geojson');
+        'http://router.project-osrm.org/route/v1/driving/$coordinates?overview=full&geometries=geojson');
+
+    debugPrint("Calculando ruta: $url"); // Debug para verificar
 
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final geometry = data['routes'][0]['geometry'];
-        final List<dynamic> coordinates = geometry['coordinates'];
+        final List<dynamic> coords = geometry['coordinates'];
 
         setState(() {
-          _routePoints = coordinates
+          _routePoints = coords
               .map((coord) => LatLng(coord[1].toDouble(), coord[0].toDouble()))
               .toList();
         });
@@ -248,19 +295,24 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
 
   void _publishTrip() async {
     if (_selectedDate == null || _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Define fecha y hora")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Define fecha y hora")));
       return;
     }
     if (_origin == null || _destination == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Selecciona origen y destino en el mapa")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Selecciona origen y destino en el mapa")));
       return;
     }
-    if (_startingPointController.text.isEmpty || _destinationController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Escribe nombres para los puntos")));
+    if (_startingPointController.text.isEmpty ||
+        _destinationController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Escribe nombres para los puntos")));
       return;
     }
     if (_fareController.text.isEmpty || _capacityController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Falta tarifa o capacidad")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Falta tarifa o capacidad")));
       return;
     }
 
@@ -280,21 +332,31 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
       destination: {
         "lat": _destination!.latitude,
         "lng": _destination!.longitude,
-        "name": _destinationController.text
+        "name": _destinationController.text,
+        "waypoint": _waypoint != null
+            ? {
+                "lat": _waypoint!.latitude,
+                "lng": _waypoint!.longitude,
+                "name": _waypointController.text
+              }
+            : null
       },
       price: double.tryParse(_fareController.text) ?? 0,
       capacity: int.tryParse(_capacityController.text) ?? 4,
       comments: _commentsController.text,
-      routePolyline: _routePoints.map((p) => [p.latitude, p.longitude]).toList(),
+      routePolyline:
+          _routePoints.map((p) => [p.latitude, p.longitude]).toList(),
     );
 
     setState(() => _isPublishing = false);
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡Viaje publicado!")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("¡Viaje publicado!")));
       Navigator.pop(context);
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error al publicar")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Error al publicar")));
     }
   }
 
@@ -312,7 +374,13 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
           if (_isLoadingRoute)
-            const Padding(padding: EdgeInsets.only(right: 16.0), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))),
+            const Padding(
+                padding: EdgeInsets.only(right: 16.0),
+                child: Center(
+                    child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2)))),
         ],
       ),
       body: SafeArea(
@@ -333,7 +401,8 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'com.uniride.app',
                       ),
                       PolylineLayer(
@@ -353,14 +422,16 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                               point: _origin!,
                               width: 80,
                               height: 80,
-                              child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                              child: const Icon(Icons.location_on,
+                                  color: Colors.red, size: 40),
                             ),
                           if (_destination != null)
                             Marker(
                               point: _destination!,
                               width: 80,
                               height: 80,
-                              child: const Icon(Icons.flag, color: Colors.blue, size: 40),
+                              child: const Icon(Icons.flag,
+                                  color: Colors.blue, size: 40),
                             ),
                         ],
                       ),
@@ -374,24 +445,58 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                       children: [
                         FloatingActionButton.small(
                           heroTag: "btnOrigin",
-                          backgroundColor: _isSelectingOrigin ? Colors.red : Colors.white,
-                          child: Icon(Icons.location_on, color: _isSelectingOrigin ? Colors.white : Colors.red),
+                          backgroundColor:
+                              _selectionMode == 0 ? Colors.red : Colors.white,
+                          child: Icon(Icons.location_on,
+                              color: _selectionMode == 0
+                                  ? Colors.white
+                                  : Colors.red),
                           onPressed: () {
-                            setState(() => _isSelectingOrigin = true);
+                            setState(() => _selectionMode = 0);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Toca en el mapa para fijar PARTIDA"), duration: Duration(seconds: 1)),
+                              const SnackBar(
+                                  content: Text(
+                                      "Toca en el mapa para fijar PARTIDA"),
+                                  duration: Duration(seconds: 1)),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        FloatingActionButton.small(
+                          heroTag: "btnWaypoint",
+                          backgroundColor: _selectionMode == 2
+                              ? Colors.orange
+                              : Colors.white,
+                          child: Icon(Icons.add_location_alt,
+                              color: _selectionMode == 2
+                                  ? Colors.white
+                                  : Colors.orange),
+                          onPressed: () {
+                            setState(() => _selectionMode = 2);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      "Toca en el mapa para fijar PUNTO INTERMEDIO"),
+                                  duration: Duration(seconds: 1)),
                             );
                           },
                         ),
                         const SizedBox(height: 8),
                         FloatingActionButton.small(
                           heroTag: "btnDest",
-                          backgroundColor: !_isSelectingOrigin ? Colors.blue : Colors.white,
-                          child: Icon(Icons.flag, color: !_isSelectingOrigin ? Colors.white : Colors.blue),
+                          backgroundColor:
+                              _selectionMode == 1 ? Colors.blue : Colors.white,
+                          child: Icon(Icons.flag,
+                              color: _selectionMode == 1
+                                  ? Colors.white
+                                  : Colors.blue),
                           onPressed: () {
-                            setState(() => _isSelectingOrigin = false);
+                            setState(() => _selectionMode = 1);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Toca en el mapa para fijar DESTINO"), duration: Duration(seconds: 1)),
+                              const SnackBar(
+                                  content: Text(
+                                      "Toca en el mapa para fijar DESTINO"),
+                                  duration: Duration(seconds: 1)),
                             );
                           },
                         ),
@@ -416,7 +521,17 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                       icon: Icons.location_on,
                       iconColor: Colors.red,
                       hint: "Ej: Universidad de los Andes",
-                      onChanged: (val) => _onSearchChanged(val, true),
+                      onChanged: (val) => _onSearchChanged(val, 0),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildTextFieldWithIcon(
+                      label: 'Punto Intermedio (Opcional):',
+                      controller: _waypointController,
+                      icon: Icons.add_location_alt,
+                      iconColor: Colors.orange,
+                      hint: "Ej: Parque Virrey",
+                      onChanged: (val) => _onSearchChanged(val, 2),
                     ),
                     const SizedBox(height: 20),
 
@@ -426,8 +541,49 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                       icon: Icons.flag,
                       iconColor: Colors.blue,
                       hint: "Ej: Bulevar Niza",
-                      onChanged: (val) => _onSearchChanged(val, false),
+                      onChanged: (val) => _onSearchChanged(val, 1),
                     ),
+
+                    // --- LISTA DE SUGERENCIAS ---
+                    if (_addressSuggestions.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4))
+                          ],
+                        ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _addressSuggestions.length,
+                          separatorBuilder: (context, index) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final suggestion = _addressSuggestions[index];
+                            return ListTile(
+                              leading: const Icon(Icons.location_on_outlined,
+                                  color: Colors.grey),
+                              title: Text(
+                                  suggestion['display_name']
+                                      .toString()
+                                      .split(',')[0],
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                              subtitle: Text(suggestion['display_name'],
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12)),
+                              onTap: () => _selectSuggestion(suggestion),
+                            );
+                          },
+                        ),
+                      ),
                     const SizedBox(height: 20),
 
                     // Fecha y Hora
@@ -494,12 +650,16 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           elevation: 2,
                         ),
                         child: _isPublishing
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Publicar viaje', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
+                            : const Text('Publicar viaje',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.w500)),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -515,22 +675,33 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
 
   // --- WIDGETS AUXILIARES ---
 
-  Widget _buildDateField({required String label, String? value, required VoidCallback onTap}) {
+  Widget _buildDateField(
+      {required String label, String? value, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          Text(label,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8)),
             child: Row(
               children: [
                 Icon(Icons.calendar_today, color: Colors.grey[600], size: 20),
                 const SizedBox(width: 12),
-                Expanded(child: Text(value ?? 'Selecciona una fecha', style: TextStyle(fontSize: 16, color: value != null ? Colors.black87 : Colors.grey[600]))),
+                Expanded(
+                    child: Text(value ?? 'Selecciona una fecha',
+                        style: TextStyle(
+                            fontSize: 16,
+                            color: value != null
+                                ? Colors.black87
+                                : Colors.grey[600]))),
                 Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
               ],
             ),
@@ -540,22 +711,33 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     );
   }
 
-  Widget _buildTimeField({required String label, String? value, required VoidCallback onTap}) {
+  Widget _buildTimeField(
+      {required String label, String? value, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          Text(label,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8)),
             child: Row(
               children: [
                 Icon(Icons.access_time, color: Colors.grey[600], size: 20),
                 const SizedBox(width: 12),
-                Expanded(child: Text(value ?? 'Selecciona una hora', style: TextStyle(fontSize: 16, color: value != null ? Colors.black87 : Colors.grey[600]))),
+                Expanded(
+                    child: Text(value ?? 'Selecciona una hora',
+                        style: TextStyle(
+                            fontSize: 16,
+                            color: value != null
+                                ? Colors.black87
+                                : Colors.grey[600]))),
                 Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
               ],
             ),
@@ -578,7 +760,8 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -588,10 +771,17 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon, color: iconColor),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Theme.of(context).primaryColor)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300)),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Theme.of(context).primaryColor)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           ),
         ),
       ],
