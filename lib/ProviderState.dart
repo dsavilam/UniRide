@@ -32,6 +32,7 @@ class TripModel {
   final Map<String, dynamic> vehicle;
   final Map<String, dynamic> origin;
   final Map<String, dynamic> destination;
+  final Map<String, dynamic>? waypoint; // <--- Nuevo: Guardamos el waypoint si existe
   final double price;
   final int availableSeats;
   final int departureTime;
@@ -44,6 +45,7 @@ class TripModel {
     required this.vehicle,
     required this.origin,
     required this.destination,
+    this.waypoint,
     required this.price,
     required this.availableSeats,
     required this.departureTime,
@@ -51,6 +53,12 @@ class TripModel {
   });
 
   factory TripModel.fromMap(String id, Map<dynamic, dynamic> map) {
+    // Intentar extraer el waypoint del destino si existe
+    Map<String, dynamic>? parsedWaypoint;
+    if (map['destination'] != null && map['destination']['waypoint'] != null) {
+      parsedWaypoint = Map<String, dynamic>.from(map['destination']['waypoint']);
+    }
+
     return TripModel(
       id: id,
       driverId: map['driverId'] ?? '',
@@ -58,6 +66,7 @@ class TripModel {
       vehicle: Map<String, dynamic>.from(map['vehicle'] ?? {}),
       origin: Map<String, dynamic>.from(map['origin'] ?? {}),
       destination: Map<String, dynamic>.from(map['destination'] ?? {}),
+      waypoint: parsedWaypoint, // Asignar el waypoint
       price: (map['economics']?['price'] ?? 0).toDouble(),
       availableSeats: map['seats']?['available'] ?? 0,
       departureTime: map['timing']?['departureTime'] ?? 0,
@@ -70,7 +79,6 @@ class TripModel {
 class ProviderState extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _db = FirebaseDatabase.instance.ref();
-  // Inicializar Storage con el bucket específico
   final FirebaseStorage _storage = FirebaseStorage.instanceFor(
     bucket: 'uni-ride-214d1.firebasestorage.app',
   );
@@ -107,115 +115,42 @@ class ProviderState extends ChangeNotifier {
     } catch (e) { debugPrint("Error perfil: $e"); }
   }
 
-  // Método para subir foto de perfil a Firebase Storage y guardar URL
+  // Subir foto
   Future<String?> uploadProfilePhoto(File imageFile) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) {
-      debugPrint("Error: Usuario no autenticado");
-      return null;
-    }
-
+    if (uid == null) return null;
     try {
-      // Crear referencia en Storage: profile_photos/{userId}.jpg
       final ref = _storage.ref().child('profile_photos/$uid.jpg');
-      
-      // Metadata para especificar el tipo de contenido
-      final metadata = SettableMetadata(
-        contentType: 'image/jpeg',
-        cacheControl: 'max-age=3600',
-      );
-      
-      // Subir el archivo con metadata
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
       final uploadTask = ref.putFile(imageFile, metadata);
-      
-      // Esperar a que termine la subida
       final snapshot = await uploadTask;
-      
-      // Verificar que la subida fue exitosa
       if (snapshot.state == TaskState.success) {
-        // Obtener la URL de descarga
         final String downloadUrl = await ref.getDownloadURL();
-        
-        // Guardar la URL en la base de datos
         await _db.child('users/$uid/profile/photoUrl').set(downloadUrl);
-        
-        // Actualizar el perfil local
         if (_userProfile != null) {
           _userProfile!['photoUrl'] = downloadUrl;
           notifyListeners();
         }
-        
-        debugPrint("Foto subida exitosamente: $downloadUrl");
         return downloadUrl;
-      } else {
-        debugPrint("Error: Estado de subida: ${snapshot.state}");
-        return null;
-      }
-    } on FirebaseException catch (e) {
-      debugPrint("Error Firebase subiendo foto: ${e.code} - ${e.message}");
-      if (e.code == 'unauthorized' || e.code == 'permission-denied') {
-        debugPrint("Error: Usuario no autorizado. Las reglas de Storage están bloqueando el acceso.");
-        debugPrint("Por favor configura las reglas en Firebase Console -> Storage -> Rules:");
-        debugPrint("rules_version = '2';");
-        debugPrint("service firebase.storage {");
-        debugPrint("  match /b/{bucket}/o {");
-        debugPrint("    match /profile_photos/{userId}.jpg {");
-        debugPrint("      allow read: if request.auth != null;");
-        debugPrint("      allow write: if request.auth != null && request.auth.uid == userId;");
-        debugPrint("    }");
-        debugPrint("  }");
-        debugPrint("}");
-      } else if (e.code == 'object-not-found' || e.code == 'not-found') {
-        debugPrint("Error: Firebase Storage no está configurado o las reglas bloquean el acceso");
-        debugPrint("Por favor verifica en Firebase Console:");
-        debugPrint("1. Que Storage esté habilitado");
-        debugPrint("2. Que las reglas permitan escritura para usuarios autenticados");
       }
       return null;
-    } catch (e) {
-      debugPrint("Error general subiendo foto: $e");
-      return null;
-    }
+    } catch (e) { return null; }
   }
 
-  // Método para eliminar foto de perfil
+  // Eliminar foto
   Future<bool> deleteProfilePhoto() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return false;
-
     try {
-      // Eliminar de Storage
       final ref = _storage.ref().child('profile_photos/$uid.jpg');
       await ref.delete();
-      
-      // Eliminar URL de la base de datos
       await _db.child('users/$uid/profile/photoUrl').remove();
-      
-      // Actualizar el perfil local
       if (_userProfile != null) {
         _userProfile!.remove('photoUrl');
         notifyListeners();
       }
-      
       return true;
-    } on FirebaseException catch (e) {
-      debugPrint("Error Firebase eliminando foto: ${e.code} - ${e.message}");
-      // Si el archivo no existe, igualmente eliminamos la URL de la BD
-      try {
-        await _db.child('users/$uid/profile/photoUrl').remove();
-        if (_userProfile != null) {
-          _userProfile!.remove('photoUrl');
-          notifyListeners();
-        }
-        return true;
-      } catch (dbError) {
-        debugPrint("Error eliminando URL de BD: $dbError");
-        return false;
-      }
-    } catch (e) {
-      debugPrint("Error general eliminando foto: $e");
-      return false;
-    }
+    } catch (e) { return false; }
   }
 
   Future<void> loadVehicles() async {
@@ -270,7 +205,7 @@ class ProviderState extends ChangeNotifier {
         "university": _userProfile?['university'] ?? 'Desconocida',
         "vehicle": vehicleObj.toJson(),
         "origin": origin,
-        "destination": { ...destination, "routeDescription": comments },
+        "destination": { ...destination, "routeDescription": comments }, // Waypoint va dentro de destination
         "timing": { "departureTime": fullDateTime.millisecondsSinceEpoch, "estimatedDurationMin": 0 },
         "status": "active",
         "economics": { "price": price, "currency": "COP" },
@@ -282,6 +217,7 @@ class ProviderState extends ChangeNotifier {
     } catch (e) { return false; }
   }
 
+  // --- LÓGICA DE BÚSQUEDA AVANZADA CON RECTÁNGULO DE WAYPOINT ---
   Future<void> searchTrips({required LatLng passengerOrigin, required LatLng passengerDest}) async {
     _isSearchingTrips = true;
     _foundTrips = [];
@@ -292,21 +228,71 @@ class ProviderState extends ChangeNotifier {
       final snapshot = await _db.child('trips').orderByChild('status').equalTo('active').get();
       if (snapshot.exists) {
         final Map<dynamic, dynamic> data = snapshot.value as Map<dynamic, dynamic>;
+
         data.forEach((key, value) {
           final trip = TripModel.fromMap(key, value);
+
           if (trip.driverId == myUid) return;
           if (trip.availableSeats <= 0) return;
 
-          final double distOriginKm = _distanceCalculator.as(LengthUnit.Kilometer, LatLng(trip.origin['lat'], trip.origin['lng']), passengerOrigin);
-          final double distDestKm = _distanceCalculator.as(LengthUnit.Kilometer, LatLng(trip.destination['lat'], trip.destination['lng']), passengerDest);
+          // 1. Verificar coincidencia DIRECTA (Origen con Origen, Destino con Destino)
+          // Radio estricto de 2km para puntos principales
+          final bool originMatch = _isClose(trip.origin, passengerOrigin, 2.0);
+          final bool destMatch = _isClose(trip.destination, passengerDest, 2.0);
 
-          if (distOriginKm <= 2.0 && distDestKm <= 2.0) {
+          // 2. Verificar WAYPOINT (Si el viaje tiene parada intermedia)
+          bool waypointOriginMatch = false; // ¿El pasajero se sube en el waypoint?
+          bool waypointDestMatch = false;   // ¿El pasajero se baja en el waypoint?
+
+          if (trip.waypoint != null) {
+            // Lógica del Rectángulo: 5km Largo (±2.5km) x 1km Ancho (±0.5km)
+            // Como no tenemos vector de dirección, usamos el radio mayor (2.5km) para cubrir el largo.
+            waypointOriginMatch = _isWithinWaypointRectangle(trip.waypoint!, passengerOrigin);
+            waypointDestMatch = _isWithinWaypointRectangle(trip.waypoint!, passengerDest);
+          }
+
+          // --- EVALUACIÓN FINAL DEL VIAJE ---
+          // Caso A: Viaje Completo (Origen Cerca -> Destino Cerca)
+          if (originMatch && destMatch) {
+            _foundTrips.add(trip);
+          }
+          // Caso B: Pasajero se sube en Waypoint (Waypoint Cerca -> Destino Cerca)
+          else if (waypointOriginMatch && destMatch) {
+            _foundTrips.add(trip);
+          }
+          // Caso C: Pasajero se baja en Waypoint (Origen Cerca -> Waypoint Cerca)
+          else if (originMatch && waypointDestMatch) {
             _foundTrips.add(trip);
           }
         });
       }
     } catch (e) { debugPrint("Error busqueda: $e"); }
     finally { _isSearchingTrips = false; notifyListeners(); }
+  }
+
+  // Helper para distancia simple (km)
+  bool _isClose(Map<String, dynamic> pointData, LatLng userPoint, double radiusKm) {
+    if (pointData['lat'] == null || pointData['lng'] == null) return false;
+    final tripPoint = LatLng(pointData['lat'], pointData['lng']);
+    final double dist = _distanceCalculator.as(LengthUnit.Kilometer, tripPoint, userPoint);
+    return dist <= radiusKm;
+  }
+
+  // Helper para la lógica del "Rectángulo" en el Waypoint
+  bool _isWithinWaypointRectangle(Map<String, dynamic> waypointData, LatLng userPoint) {
+    if (waypointData['lat'] == null || waypointData['lng'] == null) return false;
+
+    final waypointPoint = LatLng(waypointData['lat'], waypointData['lng']);
+    final double dist = _distanceCalculator.as(LengthUnit.Kilometer, waypointPoint, userPoint);
+
+    // REGLA: Rectángulo de 5km de largo x 1km de ancho.
+    // Interpretación: El largo de 5km implica que el punto más lejano válido está a 2.5km del centro.
+    // El ancho de 1km implica 0.5km del centro lateralmente.
+    // Sin vector de dirección del coche, la forma más segura de NO descartar un viaje válido
+    // es permitir un radio igual al semieje mayor (2.5km).
+    // Esto crea un área circular de cobertura que engloba el rectángulo solicitado.
+
+    return dist <= 2.5;
   }
 
   Future<bool> bookTrip(String tripId, int currentAvailable) async {

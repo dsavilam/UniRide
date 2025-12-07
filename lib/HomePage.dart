@@ -5,10 +5,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
-import 'package:geolocator/geolocator.dart'; // Necesario para GPS
+import 'package:geolocator/geolocator.dart';
 import './ProviderState.dart';
 import './ScheduleTripPage.dart';
-import './TripDetailsPage.dart'; // Importamos la nueva página de detalles
+import './TripDetailsPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,7 +25,7 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _destSearchCtrl = TextEditingController();
   LatLng? _passengerOrigin;
   LatLng? _passengerDestination;
-  Timer? _debounce; // Para no buscar en cada tecla pulsada
+  Timer? _debounce;
   bool _isSearchingAddress = false;
   bool _isLoadingLocation = false;
 
@@ -39,12 +39,11 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Carga inicial de datos y Ubicación GPS
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<ProviderState>();
-      provider.loadUserProfile();
+      provider.loadUserProfile(); // Esto cargará la foto si existe
       provider.loadVehicles();
-      _getCurrentLocation(); // <--- Obtener GPS al inicio
+      _getCurrentLocation();
     });
   }
 
@@ -63,7 +62,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoadingLocation = true);
 
-    // 1. Verificar permisos
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -73,7 +71,6 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    // 2. Obtener posición
     try {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
@@ -81,7 +78,7 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           _passengerOrigin = LatLng(position.latitude, position.longitude);
-          _originSearchCtrl.text = "Mi Ubicación Actual"; // Feedback visual
+          _originSearchCtrl.text = "Mi Ubicación Actual";
           _isLoadingLocation = false;
         });
       }
@@ -93,13 +90,12 @@ class _HomePageState extends State<HomePage> {
 
   // --- LÓGICA DE BÚSQUEDA DE DIRECCIONES (NOMINATIM) ---
   List<dynamic> _addressSuggestions = [];
-  bool _isSelectingOrigin = true; // Para saber qué campo estamos llenando
+  bool _isSelectingOrigin = true;
 
   void _onSearchChanged(String query, bool isOrigin) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     setState(() => _isSelectingOrigin = isOrigin);
 
-    // Esperar 500ms después de escribir para hacer la petición
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (query.isNotEmpty) {
         _fetchAddressSuggestions(query);
@@ -111,7 +107,6 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _fetchAddressSuggestions(String query) async {
     setState(() => _isSearchingAddress = true);
-    // Bounding Box ampliado: Bogotá + Soacha + Chía + Cajicá
     const String viewBox = "-74.30,4.40,-73.90,5.00";
 
     final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
@@ -125,7 +120,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final response =
-          await http.get(uri, headers: {'User-Agent': 'com.uniride.app'});
+      await http.get(uri, headers: {'User-Agent': 'com.uniride.app'});
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
         if (mounted) {
@@ -144,9 +139,7 @@ class _HomePageState extends State<HomePage> {
   void _selectSuggestion(dynamic suggestion) {
     final lat = double.parse(suggestion['lat']);
     final lon = double.parse(suggestion['lon']);
-    final displayName = suggestion['display_name']
-        .toString()
-        .split(',')[0]; // Solo la primera parte
+    final displayName = suggestion['display_name'].toString().split(',')[0];
 
     setState(() {
       if (_isSelectingOrigin) {
@@ -155,18 +148,16 @@ class _HomePageState extends State<HomePage> {
       } else {
         _passengerDestination = LatLng(lat, lon);
         _destSearchCtrl.text = displayName;
-        // Buscar viajes automáticamente al seleccionar destino
         _searchMatchingTrips();
       }
-      _addressSuggestions = []; // Limpiar sugerencias
-      FocusScope.of(context).unfocus(); // Cerrar teclado
+      _addressSuggestions = [];
+      FocusScope.of(context).unfocus();
     });
   }
 
   // --- BÚSQUEDA DE VIAJES (PROVIDER) ---
   void _searchMatchingTrips() {
     if (_passengerDestination != null && _passengerOrigin != null) {
-      // Llamamos al Provider con AMBOS puntos para el filtro de doble radio
       context.read<ProviderState>().searchTrips(
           passengerOrigin: _passengerOrigin!,
           passengerDest: _passengerDestination!);
@@ -179,16 +170,14 @@ class _HomePageState extends State<HomePage> {
   // --- RESERVA Y NAVEGACIÓN ---
   void _handleTripSelection(TripModel trip) async {
     if (_passengerOrigin == null) {
-      _getCurrentLocation(); // Intentar obtenerlo de nuevo si falla
+      _getCurrentLocation();
       return;
     }
 
-    // Ejecutar reserva en BD
     final provider = context.read<ProviderState>();
     final success = await provider.bookTrip(trip.id, trip.availableSeats);
 
     if (success && mounted) {
-      // Navegar a detalles pasando el viaje y mi ubicación
       Navigator.push(
           context,
           MaterialPageRoute(
@@ -197,11 +186,11 @@ class _HomePageState extends State<HomePage> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
-              Text("No se pudo reservar el viaje (quizás ya no hay cupo)")));
+          Text("No se pudo reservar el viaje (quizás ya no hay cupo)")));
     }
   }
 
-  // --- MÉTODOS CONDUCTOR (Manteniendo tu lógica original) ---
+  // --- MÉTODOS CONDUCTOR ---
   void _addVehicle() async {
     final placa = _placaController.text.trim().toUpperCase();
     final modelo = _modeloController.text.trim();
@@ -254,6 +243,8 @@ class _HomePageState extends State<HomePage> {
     final provider = context.watch<ProviderState>();
     final myVehicles = provider.vehicles;
     final userName = provider.userProfile?['fullName'] ?? '¡Bienvenid@!';
+    // Obtenemos la URL de la foto
+    final photoUrl = provider.userProfile?['photoUrl'];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -264,34 +255,64 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 20),
-                // Header
+                const SizedBox(height: 10), // Ajuste pequeño de margen superior
+                // --- HEADER MEJORADO ---
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Espacio entre texto e imagen
+                  crossAxisAlignment: CrossAxisAlignment.center, // Alineación vertical perfecta
                   children: [
                     Expanded(
-                      child: Text(
-                        userName.contains(' ')
-                            ? "Hola, ${userName.split(' ')[0]}"
-                            : userName,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
-                            ?.copyWith(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Hola,",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          Text(
+                            userName.contains(' ')
+                                ? userName.split(' ')[0]
+                                : userName,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black),
+                                color: Colors.black,
+                                height: 1.1), // Altura de línea ajustada
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.account_circle,
-                          color: Colors.grey[600], size: 30),
-                      onPressed: () => Navigator.pushNamed(context, '/PROFILE'),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    const SizedBox(width: 16),
+                    // FOTO DE PERFIL
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/PROFILE'),
+                      child: Hero(
+                        tag: 'profile-pic', // Animación bonita si en profile usas Hero también
+                        child: CircleAvatar(
+                          radius: 28, // Tamaño 56px (más grande que antes)
+                          backgroundColor: Colors.grey.shade200,
+                          // Si hay foto, la muestra. Si no, null.
+                          backgroundImage: (photoUrl != null && photoUrl.toString().isNotEmpty)
+                              ? NetworkImage(photoUrl)
+                              : null,
+                          // Si NO hay foto, muestra el icono
+                          child: (photoUrl == null || photoUrl.toString().isEmpty)
+                              ? Icon(Icons.person, color: Colors.grey.shade400, size: 32)
+                              : null,
+                        ),
+                      ),
                     ),
                   ],
                 ),
+                // -----------------------
+
                 const SizedBox(height: 24),
 
                 // Toggle Switch
@@ -314,11 +335,11 @@ class _HomePageState extends State<HomePage> {
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: _isPassenger
                                   ? [
-                                      BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2))
-                                    ]
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2))
+                              ]
                                   : [],
                             ),
                             child: Center(
@@ -343,11 +364,11 @@ class _HomePageState extends State<HomePage> {
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: !_isPassenger
                                   ? [
-                                      BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2))
-                                    ]
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2))
+                              ]
                                   : [],
                             ),
                             child: Center(
@@ -397,15 +418,15 @@ class _HomePageState extends State<HomePage> {
             hintText: 'Tu ubicación actual',
             prefixIcon: _isLoadingLocation
                 ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: SizedBox(
-                        width: 10,
-                        height: 10,
-                        child: CircularProgressIndicator(strokeWidth: 2)))
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                    width: 10,
+                    height: 10,
+                    child: CircularProgressIndicator(strokeWidth: 2)))
                 : const Icon(Icons.my_location, color: Colors.blue),
             suffixIcon: IconButton(
               icon: const Icon(Icons.gps_fixed, color: Colors.grey),
-              onPressed: _getCurrentLocation, // Botón para recargar GPS
+              onPressed: _getCurrentLocation,
             ),
             filled: true,
             fillColor: Colors.grey[100],
@@ -413,7 +434,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none),
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
         const SizedBox(height: 10),
@@ -427,11 +448,11 @@ class _HomePageState extends State<HomePage> {
             prefixIcon: const Icon(CupertinoIcons.search, color: Colors.grey),
             suffixIcon: _isSearchingAddress
                 ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: SizedBox(
-                        width: 10,
-                        height: 10,
-                        child: CircularProgressIndicator(strokeWidth: 2)))
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                    width: 10,
+                    height: 10,
+                    child: CircularProgressIndicator(strokeWidth: 2)))
                 : null,
             filled: true,
             fillColor: Colors.grey[200],
@@ -439,7 +460,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none),
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
 
@@ -481,7 +502,7 @@ class _HomePageState extends State<HomePage> {
           ),
 
         const SizedBox(height: 32),
-        const Text('Viajes disponibles (Radio 2km)',
+        const Text('Viajes disponibles para ti',
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
@@ -496,27 +517,25 @@ class _HomePageState extends State<HomePage> {
               child: Text("No se encontraron viajes cercanos a tu ruta.",
                   style: TextStyle(color: Colors.grey)))
         else if (_passengerDestination == null)
-          const Center(
-              child: Text("Ingresa un destino para buscar.",
-                  style: TextStyle(color: Colors.grey)))
-        else
-          ListView.separated(
-            shrinkWrap:
-                true, // Importante para que funcione dentro del SingleChildScrollView
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: provider.foundTrips.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final trip = provider.foundTrips[index];
-              return _buildTripCard(trip);
-            },
-          ),
+            const Center(
+                child: Text("Ingresa un destino para buscar.",
+                    style: TextStyle(color: Colors.grey)))
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: provider.foundTrips.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final trip = provider.foundTrips[index];
+                return _buildTripCard(trip);
+              },
+            ),
       ],
     );
   }
 
   Widget _buildTripCard(TripModel trip) {
-    // Formatear hora desde timestamp
     final dt = DateTime.fromMillisecondsSinceEpoch(trip.departureTime);
     final timeString =
         "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
@@ -716,11 +735,11 @@ class _HomePageState extends State<HomePage> {
                   width: isSelected ? 2.0 : 1.0),
               boxShadow: isSelected
                   ? [
-                      BoxShadow(
-                          color: primaryColor.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4))
-                    ]
+                BoxShadow(
+                    color: primaryColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4))
+              ]
                   : [],
             ),
             child: Column(children: [
@@ -732,9 +751,9 @@ class _HomePageState extends State<HomePage> {
               Text(v.placa,
                   style: TextStyle(
                       fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.w500,
+                      isSelected ? FontWeight.bold : FontWeight.w500,
                       color:
-                          isSelected ? Colors.blue.shade900 : Colors.black54)),
+                      isSelected ? Colors.blue.shade900 : Colors.black54)),
             ]),
           ),
         );
@@ -744,9 +763,9 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildInlineFormField(
       {required String label,
-      required TextEditingController controller,
-      int? maxLength,
-      bool showClearIcon = false}) {
+        required TextEditingController controller,
+        int? maxLength,
+        bool showClearIcon = false}) {
     return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(children: [
