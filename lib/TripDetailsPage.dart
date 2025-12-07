@@ -1,14 +1,16 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import './ProviderState.dart'; // Para acceder al modelo TripModel
+import 'package:firebase_database/firebase_database.dart';
+import './ProviderState.dart';
 
 class TripDetailsPage extends StatefulWidget {
   final TripModel trip;
-  final LatLng passengerOrigin; // Dónde está el pasajero
+  final LatLng passengerOrigin;
 
   const TripDetailsPage({
     super.key,
@@ -22,21 +24,82 @@ class TripDetailsPage extends StatefulWidget {
 
 class _TripDetailsPageState extends State<TripDetailsPage> {
   final MapController _mapController = MapController();
-  List<LatLng> _routeToPickup = [];
-  bool _isLoadingRoute = true;
+
+  // Rutas
+  List<LatLng> _routeToPickup = []; // Caminata del pasajero (Punteada)
+  List<LatLng> _driverRoute = [];   // Ruta del carro (Azul sólida)
+
+  // Estado
+  String _currentStatus = "active";
+  late DatabaseReference _tripRef;
+  StreamSubscription? _tripSubscription;
 
   @override
   void initState() {
     super.initState();
-    // Calcular ruta desde Pasajero hasta Conductor (Punto de encuentro)
+    _currentStatus = widget.trip.id.isEmpty ? "active" : "active"; // Valor inicial
+
+    // 1. Cargar ruta del conductor (La que viene de la BD)
+    _loadDriverRoute();
+
+    // 2. Calcular ruta caminando hacia el encuentro
     _getRouteToPickup();
+
+    // 3. Escuchar cambios en tiempo real del estado del viaje
+    _tripRef = FirebaseDatabase.instance.ref('trips/${widget.trip.id}');
+    _tripSubscription = _tripRef.child('status').onValue.listen((event) {
+      if (event.snapshot.exists) {
+        final newStatus = event.snapshot.value.toString();
+        if (mounted) {
+          setState(() => _currentStatus = newStatus);
+
+          // Si el conductor finaliza el viaje globalmente, mostramos dialogo
+          if (newStatus == 'finished') {
+            _showRateDriverDialog();
+          }
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tripSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _loadDriverRoute() {
+    // Convertimos la lista dinámica [[lat,lng],...] a List<LatLng>
+    // Esta data ya viene en el TripModel desde la pantalla anterior
+    try {
+      // widget.trip ya debería tener routePolyline poblado desde el Provider
+      // Si el TripModel no tiene routePolyline mapeado, asegúrate de que el modelo lo tenga.
+      // Asumiendo que TripModel tiene el campo 'routePolyline':
+      // Si no lo tiene en tu modelo actual, usa widget.trip.originalMap['routePolyline']
+
+      // NOTA: Como en tu modelo TripModel anterior no vi explícitamente el campo routePolyline
+      // en el constructor, asumiré que lo agregaste o lo sacamos del mapa si es necesario.
+      // Si usaste el código que te pasé antes, ya debería estar en la BD.
+
+      // Recuperamos directamente de la BD si el modelo no lo trajo completo
+      FirebaseDatabase.instance.ref('trips/${widget.trip.id}/routePolyline').get().then((snapshot) {
+        if (snapshot.exists) {
+          final List<dynamic> points = snapshot.value as List<dynamic>;
+          setState(() {
+            _driverRoute = points.map((p) => LatLng(p[0], p[1])).toList();
+          });
+        }
+      });
+
+    } catch (e) {
+      debugPrint("Error cargando ruta conductor: $e");
+    }
   }
 
   Future<void> _getRouteToPickup() async {
     final start = widget.passengerOrigin;
     final end = LatLng(widget.trip.origin['lat'], widget.trip.origin['lng']);
 
-    // Usamos perfil 'walking' porque el pasajero camina hacia el punto de encuentro
     final url = Uri.parse(
         'http://router.project-osrm.org/route/v1/walking/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson');
 
@@ -52,37 +115,42 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
             _routeToPickup = coordinates
                 .map((coord) => LatLng(coord[1].toDouble(), coord[0].toDouble()))
                 .toList();
-            _isLoadingRoute = false;
           });
         }
       }
     } catch (e) {
-      debugPrint("Error calculando ruta a encuentro: $e");
-      if (mounted) setState(() => _isLoadingRoute = false);
+      debugPrint("Error ruta caminata: $e");
     }
   }
 
-  // --- LÓGICA DE CANCELACIÓN ---
+  // --- ACCIONES ---
+
   void _cancelTrip() async {
     final provider = context.read<ProviderState>();
-
-    // Llamamos a la función del provider que devuelve el cupo a la BD
-    final success = await provider.cancelTripReservation(
-        widget.trip.id,
-        widget.trip.availableSeats
-    );
-
+    final success = await provider.cancelTripReservation(widget.trip.id, widget.trip.availableSeats);
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Solicitud cancelada correctamente")),
-      );
-      // Regresamos al Home
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Reserva cancelada")));
       Navigator.pop(context);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error al cancelar la solicitud")),
-      );
     }
+  }
+
+  void _finishMyTrip() {
+    // El pasajero decide bajarse
+    _showRateDriverDialog();
+  }
+
+  void _showRateDriverDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => RateDriverDialog(
+        driverId: widget.trip.driverId,
+        driverName: widget.trip.driverName,
+      ),
+    ).then((_) {
+      // Al cerrar el diálogo, vamos al home
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    });
   }
 
   @override
@@ -90,33 +158,55 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     final trip = widget.trip;
     final pickupPoint = LatLng(trip.origin['lat'], trip.origin['lng']);
 
-    // Formatear Hora de Salida
-    final dt = DateTime.fromMillisecondsSinceEpoch(trip.departureTime);
-    final timeString = "${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}";
+    // Status Text
+    String statusText = "Esperando salida...";
+    Color statusColor = Colors.orange;
+    if (_currentStatus == 'in_progress') {
+      statusText = "Viaje en curso";
+      statusColor = Colors.green;
+    } else if (_currentStatus == 'finished') {
+      statusText = "Finalizado";
+      statusColor = Colors.grey;
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Detalles del Viaje"),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Tu Viaje", style: TextStyle(fontSize: 18)),
+            Text(statusText, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        backgroundColor: statusColor,
+        foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
-          // MAPA SUPERIOR
+          // MAPA
           Expanded(
             child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
                 initialCenter: widget.passengerOrigin,
-                initialZoom: 15.0,
+                initialZoom: 14.0,
               ),
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.uniride.app',
+                TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+
+                // 1. Ruta del Conductor (Azul Gruesa)
+                PolylineLayer(
+                  polylines: [
+                    if (_driverRoute.isNotEmpty)
+                      Polyline(
+                        points: _driverRoute,
+                        strokeWidth: 5.0,
+                        color: Colors.blue.withOpacity(0.7),
+                      ),
+                  ],
                 ),
-                // Ruta punteada para caminar al punto de encuentro
+
+                // 2. Ruta Caminando al encuentro (Punteada Violeta)
                 PolylineLayer(
                   polylines: [
                     if (_routeToPickup.isNotEmpty)
@@ -128,31 +218,26 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                       ),
                   ],
                 ),
+
                 MarkerLayer(
                   markers: [
-                    // Yo (Pasajero)
+                    // Yo
                     Marker(
                       point: widget.passengerOrigin,
-                      width: 60,
-                      height: 60,
-                      child: const Column(
-                        children: [
-                          Icon(Icons.person_pin_circle, color: Colors.blue, size: 40),
-                          Text("Tú", style: TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
+                      width: 60, height: 60,
+                      child: const Icon(Icons.person_pin_circle, color: Colors.purple, size: 40),
                     ),
-                    // Punto de Encuentro
+                    // Carro (Origen del viaje)
                     Marker(
                       point: pickupPoint,
-                      width: 80,
-                      height: 80,
-                      child: const Column(
-                        children: [
-                          Icon(Icons.location_on, color: Colors.red, size: 40),
-                          Text("Recogida", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                        ],
-                      ),
+                      width: 60, height: 60,
+                      child: const Icon(Icons.directions_car, color: Colors.blue, size: 40),
+                    ),
+                    // Destino
+                    Marker(
+                      point: LatLng(trip.destination['lat'], trip.destination['lng']),
+                      width: 60, height: 60,
+                      child: const Icon(Icons.flag, color: Colors.red, size: 40),
                     ),
                   ],
                 ),
@@ -160,112 +245,66 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
             ),
           ),
 
-          // TARJETA DE DETALLES INFERIOR
+          // PANEL INFERIOR
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -5)),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Fila Superior: Hora y Precio
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Hora de Salida", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        Text(timeString,
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue)
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text("Tarifa", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        Text("\$${trip.price.toStringAsFixed(0)}",
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green)
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-
-                const SizedBox(height: 15),
-
                 // Info Conductor
                 Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.blue.shade50,
-                      radius: 20,
-                      child: const Icon(Icons.person, color: Colors.blue),
-                    ),
+                    const CircleAvatar(child: Icon(Icons.person)),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(trip.driverName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          Text("${trip.vehicle['placa']} • ${trip.vehicle['modelo']} • ${trip.vehicle['color']}",
-                            style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                          ),
+                          Text(trip.driverName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text("${trip.vehicle['placa']} • ${trip.vehicle['modelo']}", style: TextStyle(color: Colors.grey[600])),
                         ],
                       ),
                     ),
+                    Column(
+                      children: [
+                        Text("\$${trip.price.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
+                        const Text("COP", style: TextStyle(fontSize: 10)),
+                      ],
+                    )
                   ],
                 ),
+                const SizedBox(height: 20),
 
-                const Divider(height: 25),
-
-                // Sección de Comentarios (Si existen)
-                if (trip.routeDescription.isNotEmpty) ...[
-                  const Text("Comentarios del conductor:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Container(
-                    margin: const EdgeInsets.only(top: 5, bottom: 15),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Text(
-                      trip.routeDescription,
-                      style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87),
-                    ),
-                  ),
-                ],
-
-                // Direcciones
-                _infoRow(Icons.place, "Punto de encuentro:", trip.origin['name']),
-                const SizedBox(height: 10),
-                _infoRow(Icons.flag, "Destino final:", trip.destination['name']),
-
-                const SizedBox(height: 25),
-
-                // Botón Cancelar Solicitud
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
+                // BOTÓN DE ACCIÓN
+                if (_currentStatus == 'active')
+                  ElevatedButton.icon(
                     onPressed: _cancelTrip,
-                    icon: const Icon(Icons.cancel_outlined, color: Colors.white),
-                    label: const Text("Cancelar Solicitud", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.close),
+                    label: const Text("Cancelar Solicitud"),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade400,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
+                      backgroundColor: Colors.red.shade100,
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                     ),
-                  ),
-                )
+                  )
+                else if (_currentStatus == 'in_progress')
+                  ElevatedButton.icon(
+                    onPressed: _finishMyTrip,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text("Ya llegué a mi destino"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                  )
+                else
+                  const Center(child: Text("Viaje finalizado", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
               ],
             ),
           ),
@@ -273,24 +312,56 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
       ),
     );
   }
+}
 
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: Colors.grey),
-        const SizedBox(width: 10),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(color: Colors.black),
-              children: [
-                TextSpan(text: "$label ", style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54)),
-                TextSpan(text: value),
-              ],
-            ),
-          ),
-        ),
+// DIALOGO PARA CALIFICAR AL CONDUCTOR
+class RateDriverDialog extends StatefulWidget {
+  final String driverId;
+  final String driverName;
+  const RateDriverDialog({super.key, required this.driverId, required this.driverName});
+
+  @override
+  State<RateDriverDialog> createState() => _RateDriverDialogState();
+}
+
+class _RateDriverDialogState extends State<RateDriverDialog> {
+  double _rating = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Calificar Viaje"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text("¿Qué tal estuvo el viaje con ${widget.driverName}?"),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              return IconButton(
+                onPressed: () => setState(() => _rating = index + 1.0),
+                icon: Icon(
+                  Icons.star,
+                  size: 32,
+                  color: _rating > index ? Colors.amber : Colors.grey.shade300,
+                ),
+              );
+            }),
+          )
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            if (_rating > 0) {
+              final provider = context.read<ProviderState>();
+              await provider.rateUser(widget.driverId, _rating);
+            }
+            if (mounted) Navigator.pop(context);
+          },
+          child: const Text("ENVIAR"),
+        )
       ],
     );
   }

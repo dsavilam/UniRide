@@ -178,7 +178,8 @@ class ProviderState extends ChangeNotifier {
     } catch (e) { return false; }
   }
 
-  Future<bool> publishTrip({
+  // Cambiamos Future<bool> por Future<String?> para retornar el ID del viaje creado
+  Future<String?> publishTrip({
     required String vehiclePlaca,
     required DateTime departureDate,
     required TimeOfDay departureTime,
@@ -190,31 +191,56 @@ class ProviderState extends ChangeNotifier {
     required List<dynamic> routePolyline,
   }) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) return false;
+    if (uid == null) return null; // Retornamos null si falla
 
     VehicleModel? vehicleObj;
-    try { vehicleObj = _vehicles.firstWhere((v) => v.placa == vehiclePlaca); }
-    catch (e) { vehicleObj = VehicleModel(id: 'unk', placa: vehiclePlaca, modelo: '', color: ''); }
+    try {
+      vehicleObj = _vehicles.firstWhere((v) => v.placa == vehiclePlaca);
+    } catch (e) {
+      vehicleObj = VehicleModel(id: 'unk', placa: vehiclePlaca, modelo: '', color: '');
+    }
 
     try {
-      final DateTime fullDateTime = DateTime(departureDate.year, departureDate.month, departureDate.day, departureTime.hour, departureTime.minute);
+      final DateTime fullDateTime = DateTime(
+        departureDate.year,
+        departureDate.month,
+        departureDate.day,
+        departureTime.hour,
+        departureTime.minute,
+      );
+
+      // Creamos la referencia primero para obtener el ID (key)
       final newTripRef = _db.child('trips').push();
+
       final tripData = {
         "driverId": uid,
         "driverName": _userProfile?['fullName'] ?? 'Conductor',
         "university": _userProfile?['university'] ?? 'Desconocida',
         "vehicle": vehicleObj.toJson(),
         "origin": origin,
-        "destination": { ...destination, "routeDescription": comments }, // Waypoint va dentro de destination
-        "timing": { "departureTime": fullDateTime.millisecondsSinceEpoch, "estimatedDurationMin": 0 },
+        "destination": { ...destination, "routeDescription": comments },
+        "timing": {
+          "departureTime": fullDateTime.millisecondsSinceEpoch,
+          "estimatedDurationMin": 0
+        },
         "status": "active",
         "economics": { "price": price, "currency": "COP" },
-        "seats": { "initialCapacity": capacity, "available": capacity, "passengers": {} },
+        "seats": {
+          "initialCapacity": capacity,
+          "available": capacity,
+          "passengers": {}
+        },
         "routePolyline": routePolyline
       };
+
       await newTripRef.set(tripData);
-      return true;
-    } catch (e) { return false; }
+
+      // ¡ÉXITO! Retornamos el ID del nuevo viaje
+      return newTripRef.key;
+    } catch (e) {
+      debugPrint("Error publicando viaje: $e");
+      return null;
+    }
   }
 
   // --- LÓGICA DE BÚSQUEDA AVANZADA CON RECTÁNGULO DE WAYPOINT ---
@@ -352,5 +378,58 @@ class ProviderState extends ChangeNotifier {
     await _auth.signOut();
     _selectedUniversity = null; _userProfile = null; _vehicles = []; _foundTrips = [];
     notifyListeners();
+  }
+
+  // --- NUEVOS MÉTODOS PARA EL FLUJO DE CONDUCTOR ---
+
+  // 1. Obtener información de un pasajero por su ID
+  Future<Map<String, dynamic>?> getUserProfile(String userId) async {
+    try {
+      final snapshot = await _db.child('users/$userId/profile').get();
+      if (snapshot.exists) {
+        return Map<String, dynamic>.from(snapshot.value as Map);
+      }
+    } catch (e) {
+      debugPrint("Error obteniendo usuario: $e");
+    }
+    return null;
+  }
+
+  // 2. Cambiar estado del viaje (active -> in_progress -> finished)
+  Future<bool> updateTripStatus(String tripId, String newStatus) async {
+    try {
+      await _db.child('trips/$tripId').update({'status': newStatus});
+      return true;
+    } catch (e) {
+      debugPrint("Error actualizando estado: $e");
+      return false;
+    }
+  }
+
+  // 3. Calificar usuario (Conductor a Pasajero o viceversa)
+  Future<bool> rateUser(String userId, double rating) async {
+    try {
+      final userRef = _db.child('users/$userId/profile');
+      final snapshot = await userRef.get();
+
+      if (snapshot.exists) {
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        double currentRating = (data['rating'] ?? 5.0).toDouble();
+        int trips = (data['completedTrips'] ?? 0);
+
+        // Nuevo promedio ponderado
+        double newRating = ((currentRating * trips) + rating) / (trips + 1);
+
+        await userRef.update({
+          'rating': newRating,
+          'completedTrips': trips + 1
+        });
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Error calificando: $e");
+      return false;
+    }
   }
 }
