@@ -39,7 +39,8 @@ class _SignUpPageState extends State<SignUpPage> {
     final provider = context.read<ProviderState>();
     if (provider.selectedUniversity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: No se ha seleccionado universidad.')),
+        const SnackBar(
+            content: Text('Error: No se ha seleccionado universidad.')),
       );
       return;
     }
@@ -58,7 +59,28 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = false);
 
     if (success && mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/HOME', (route) => false);
+      // Mostrar diálogo de verificación
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('¡Registro Exitoso!'),
+          content: const Text(
+            'Hemos enviado un enlace de verificación a tu correo institucional.\n\n'
+            'Por favor verifica tu cuenta antes de iniciar sesión.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Cerrar diálogo
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil('/LOGIN', (route) => false);
+              },
+              child: const Text('Ir a Iniciar Sesión'),
+            ),
+          ],
+        ),
+      );
     } else if (mounted) {
       // Mostramos el mensaje de error específico que viene del Provider
       ScaffoldMessenger.of(context).showSnackBar(
@@ -101,7 +123,10 @@ class _SignUpPageState extends State<SignUpPage> {
                 const Text(
                   'Regístrate',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
                 ),
                 const SizedBox(height: 30),
 
@@ -131,7 +156,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'El correo es obligatorio';
+                    if (value == null || value.isEmpty)
+                      return 'El correo es obligatorio';
                     if (!provider.validateEmailDomain(value)) {
                       return 'Usa un correo institucional válido';
                     }
@@ -176,7 +202,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu celular';
+                    if (value == null || value.isEmpty)
+                      return 'Ingresa tu celular';
                     return null;
                   },
                 ),
@@ -188,13 +215,18 @@ class _SignUpPageState extends State<SignUpPage> {
                     backgroundColor: Colors.blue.shade700,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                      height: 20, width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Registrarme', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text('Registrarme',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
 
                 const SizedBox(height: 20),
@@ -204,7 +236,10 @@ class _SignUpPageState extends State<SignUpPage> {
                     const Text('¿Ya tienes una cuenta? '),
                     GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/LOGIN'),
-                      child: Text('Inicia sesión', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                      child: Text('Inicia sesión',
+                          style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -216,7 +251,10 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Widget _buildTextField({required String label, required TextEditingController controller, required IconData icon}) {
+  Widget _buildTextField(
+      {required String label,
+      required TextEditingController controller,
+      required IconData icon}) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
@@ -224,7 +262,8 @@ class _SignUpPageState extends State<SignUpPage> {
         prefixIcon: Icon(icon),
         border: const OutlineInputBorder(),
       ),
-      validator: (value) => (value == null || value.isEmpty) ? 'Este campo es obligatorio' : null,
+      validator: (value) =>
+          (value == null || value.isEmpty) ? 'Este campo es obligatorio' : null,
     );
   }
 }
