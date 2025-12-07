@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import './ProviderState.dart';
 
@@ -10,6 +12,9 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  File? _profileImage;
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
@@ -17,6 +22,74 @@ class _ProfilePageState extends State<ProfilePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProviderState>().loadUserProfile();
     });
+  }
+
+  // Método para mostrar el diálogo de selección de imagen
+  Future<void> _showImageSourceDialog() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Elegir de la galería'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Tomar foto'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              if (_profileImage != null)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _profileImage = null;
+                    });
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Método para seleccionar/tomar imagen
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _profileImage = File(image.path);
+        });
+        // Aquí podrías subir la imagen a Firebase Storage si lo necesitas
+        // await _uploadImageToFirebase(_profileImage!);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar imagen: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -38,20 +111,57 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(
                 children: [
                   const SizedBox(height: 10),
-                  // Avatar grande
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey.shade200,
-                    child: Text(
-                      profile['fullName'] != null &&
-                              profile['fullName'].isNotEmpty
-                          ? profile['fullName'][0].toUpperCase()
-                          : "U",
-                      style:
-                          TextStyle(fontSize: 40, color: Colors.blue.shade800),
+                  // Avatar grande (clickeable)
+                  GestureDetector(
+                    onTap: _showImageSourceDialog,
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey.shade200,
+                          backgroundImage: _profileImage != null
+                              ? FileImage(_profileImage!)
+                              : null,
+                          child: _profileImage == null
+                              ? Text(
+                                  profile['fullName'] != null &&
+                                          profile['fullName'].isNotEmpty
+                                      ? profile['fullName'][0].toUpperCase()
+                                      : "U",
+                                  style: TextStyle(
+                                      fontSize: 40, color: Colors.blue.shade800),
+                                )
+                              : null,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _showImageSourceDialog,
+                    child: const Text(
+                      'Cambiar foto de perfil',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
 
                   // Nombre y Usuario
                   Text(
