@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import './ProviderState.dart';
 import './ScheduleTripPage.dart';
 import './TripDetailsPage.dart';
+import './DriverTripPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -43,6 +44,8 @@ class _HomePageState extends State<HomePage> {
       final provider = context.read<ProviderState>();
       provider.loadUserProfile(); // Esto cargará la foto si existe
       provider.loadVehicles();
+      provider.fetchMyDriverTrips();
+      provider.fetchMyPassengerTrips();
       _getCurrentLocation();
     });
   }
@@ -178,11 +181,21 @@ class _HomePageState extends State<HomePage> {
     final success = await provider.bookTrip(trip.id, trip.availableSeats);
 
     if (success && mounted) {
-      Navigator.push(
+      await Navigator.push(
           context,
           MaterialPageRoute(
               builder: (context) => TripDetailsPage(
                   trip: trip, passengerOrigin: _passengerOrigin!)));
+
+      // Al volver, refrescamos las listas por si canceló
+      if (mounted) {
+        final provider = context.read<ProviderState>();
+        provider.fetchMyPassengerTrips();
+        provider.fetchMyDriverTrips();
+        provider.searchTrips(
+            passengerOrigin: _passengerOrigin!,
+            passengerDest: _passengerDestination!);
+      }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
@@ -395,7 +408,7 @@ class _HomePageState extends State<HomePage> {
                 // Vista Condicional
                 _isPassenger
                     ? _buildPassengerView(provider)
-                    : _buildDriverView(myVehicles),
+                    : _buildDriverView(provider, myVehicles),
               ],
             ),
           ),
@@ -415,6 +428,30 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.bold,
                 color: Colors.black)),
         const SizedBox(height: 16),
+
+        // --- SECCIÓN MIS RESERVAS (NUEVO) ---
+        if (provider.myPassengerTrips.isNotEmpty) ...[
+          const Text("Mis Reservas Activas",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue)),
+          const SizedBox(height: 10),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: provider.myPassengerTrips.length,
+            separatorBuilder: (c, i) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final trip = provider.myPassengerTrips[index];
+              return _buildMyBookingCard(trip);
+            },
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+        ],
+        // ------------------------------------
 
         // Input Origen (Auto-rellenado por GPS)
         TextField(
@@ -628,7 +665,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // --- VISTA CONDUCTOR ---
-  Widget _buildDriverView(List<VehicleModel> vehicles) {
+  Widget _buildDriverView(ProviderState provider, List<VehicleModel> vehicles) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
@@ -645,6 +682,32 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 20),
         _buildVehicleSelector(vehicles),
         const SizedBox(height: 40),
+
+        // --- SECCIÓN MIS VIAJES PUBLICADOS (NUEVO) ---
+        if (provider.myDriverTrips.isNotEmpty) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text("Mis Viajes Publicados",
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(height: 10),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: provider.myDriverTrips.length,
+            separatorBuilder: (c, i) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final trip = provider.myDriverTrips[index];
+              return _buildMyDriverTripCard(trip);
+            },
+          ),
+          const SizedBox(height: 30),
+          const Divider(),
+          const SizedBox(height: 30),
+        ],
+        // ---------------------------------------------
+
         GestureDetector(
           onTap: () =>
               setState(() => _showAddVehicleForm = !_showAddVehicleForm),
@@ -688,17 +751,23 @@ class _HomePageState extends State<HomePage> {
           width: double.infinity,
           height: 55,
           child: ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (_selectedVehiclePlaca == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Selecciona un vehículo")));
                 return;
               }
-              Navigator.push(
+              await Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => ScheduleTripPage(
                           selectedVehicle: _selectedVehiclePlaca)));
+
+              // Al volver (si no se quedó en DriverTripPage), refrescamos
+              if (mounted) {
+                final provider = context.read<ProviderState>();
+                provider.fetchMyDriverTrips();
+              }
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
@@ -790,5 +859,73 @@ class _HomePageState extends State<HomePage> {
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(vertical: 8))))
         ]));
+  }
+
+  // --- CARDS PARA MIS VIAJES ---
+  Widget _buildMyBookingCard(TripModel trip) {
+    final dt = DateTime.fromMillisecondsSinceEpoch(trip.departureTime);
+    final dateStr =
+        "${dt.day}/${dt.month} - ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.blue.shade50,
+      child: ListTile(
+        leading: const Icon(Icons.event_seat, color: Colors.blue),
+        title: Text("Viaje a: ${trip.destination['name']}",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text("Salida: $dateStr\nConductor: ${trip.driverName}"),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () async {
+          // Navegar al detalle
+          // Si no tenemos origen GPS, usamos el origen del viaje como fallback para que no explote
+          final myOrigin = _passengerOrigin ??
+              LatLng(trip.origin['lat'], trip.origin['lng']);
+          await Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) =>
+                      TripDetailsPage(trip: trip, passengerOrigin: myOrigin)));
+
+          // Refrescar al volver
+          if (mounted) {
+            context.read<ProviderState>().fetchMyPassengerTrips();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildMyDriverTripCard(TripModel trip) {
+    final dt = DateTime.fromMillisecondsSinceEpoch(trip.departureTime);
+    final dateStr =
+        "${dt.day}/${dt.month} - ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.green.shade50,
+      child: ListTile(
+        leading: const Icon(Icons.directions_car, color: Colors.green),
+        title: Text("Hacia: ${trip.destination['name']}",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(
+            "Salida: $dateStr\nPasajeros: ${trip.availableSeats < 4 ? (4 - trip.availableSeats) : 0}"),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () async {
+          await Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) =>
+                      DriverTripPage(tripId: trip.id, tripData: trip)));
+
+          // Refrescar al volver
+          if (mounted) {
+            context.read<ProviderState>().fetchMyDriverTrips();
+          }
+        },
+      ),
+    );
   }
 }

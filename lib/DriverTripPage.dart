@@ -11,7 +11,8 @@ class DriverTripPage extends StatefulWidget {
   final String tripId;
   final TripModel tripData;
 
-  const DriverTripPage({super.key, required this.tripId, required this.tripData});
+  const DriverTripPage(
+      {super.key, required this.tripId, required this.tripData});
 
   @override
   State<DriverTripPage> createState() => _DriverTripPageState();
@@ -50,7 +51,8 @@ class _DriverTripPageState extends State<DriverTripPage> {
 
     _getCurrentLocation();
     _checkStartTime();
-    _timer = Timer.periodic(const Duration(minutes: 1), (timer) => _checkStartTime());
+    _timer = Timer.periodic(
+        const Duration(minutes: 1), (timer) => _checkStartTime());
   }
 
   // --- NUEVO: Extraer ruta real del modelo ---
@@ -69,8 +71,10 @@ class _DriverTripPageState extends State<DriverTripPage> {
         // Fallback: Línea recta
         setState(() {
           _routePoints = [
-            LatLng(widget.tripData.origin['lat'], widget.tripData.origin['lng']),
-            LatLng(widget.tripData.destination['lat'], widget.tripData.destination['lng'])
+            LatLng(
+                widget.tripData.origin['lat'], widget.tripData.origin['lng']),
+            LatLng(widget.tripData.destination['lat'],
+                widget.tripData.destination['lng'])
           ];
         });
       }
@@ -84,7 +88,8 @@ class _DriverTripPageState extends State<DriverTripPage> {
   }
 
   Future<void> _getCurrentLocation() async {
-    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
     if (mounted) {
       setState(() {
         _currentLocation = LatLng(position.latitude, position.longitude);
@@ -105,7 +110,8 @@ class _DriverTripPageState extends State<DriverTripPage> {
     }
   }
 
-  Future<void> _updatePassengersList(Map<dynamic, dynamic>? passengersData) async {
+  Future<void> _updatePassengersList(
+      Map<dynamic, dynamic>? passengersData) async {
     if (passengersData == null) {
       if (mounted) setState(() => _passengersList = []);
       return;
@@ -134,13 +140,15 @@ class _DriverTripPageState extends State<DriverTripPage> {
   void _startTrip() async {
     // Validación de seguridad extra
     if (_passengersList.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Necesitas al menos un pasajero para iniciar.")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Necesitas al menos un pasajero para iniciar.")));
       return;
     }
 
     final provider = context.read<ProviderState>();
     await provider.updateTripStatus(widget.tripId, 'in_progress');
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡Viaje iniciado!")));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text("¡Viaje iniciado!")));
   }
 
   void _finishTrip() async {
@@ -159,22 +167,31 @@ class _DriverTripPageState extends State<DriverTripPage> {
   }
 
   void _cancelAndExit() async {
-    // Lógica para borrar el viaje si no hay pasajeros y el conductor se arrepiente
-    // (O simplemente salir)
-    await _tripRef.remove(); // Opcional: Borrar el viaje de BD
+    if (widget.tripId.isEmpty) {
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+
+    final provider = context.read<ProviderState>();
+    await provider.deleteTrip(widget.tripId);
+
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final dt = DateTime.fromMillisecondsSinceEpoch(widget.tripData.departureTime);
-    final timeStr = "${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}";
+    final dt =
+        DateTime.fromMillisecondsSinceEpoch(widget.tripData.departureTime);
+    final timeStr =
+        "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
     final bool hasPassengers = _passengersList.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_tripStatus == 'in_progress' ? "En ruta..." : "Esperando salida"),
-        backgroundColor: _tripStatus == 'in_progress' ? Colors.green : Colors.blue,
+        title: Text(
+            _tripStatus == 'in_progress' ? "En ruta..." : "Esperando salida"),
+        backgroundColor:
+            _tripStatus == 'in_progress' ? Colors.green : Colors.blue,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -195,14 +212,20 @@ class _DriverTripPageState extends State<DriverTripPage> {
             child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: LatLng(widget.tripData.origin['lat'], widget.tripData.origin['lng']),
+                initialCenter: LatLng(widget.tripData.origin['lat'],
+                    widget.tripData.origin['lng']),
                 initialZoom: 13,
               ),
               children: [
-                TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+                TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
                 PolylineLayer(
                   polylines: [
-                    Polyline(points: _routePoints, color: Colors.blue, strokeWidth: 5.0),
+                    Polyline(
+                        points: _routePoints,
+                        color: Colors.blue,
+                        strokeWidth: 5.0),
                   ],
                 ),
                 MarkerLayer(
@@ -210,22 +233,26 @@ class _DriverTripPageState extends State<DriverTripPage> {
                     if (_currentLocation != null)
                       Marker(
                         point: _currentLocation!,
-                        child: const Icon(Icons.navigation, color: Colors.blue, size: 30),
+                        child: const Icon(Icons.navigation,
+                            color: Colors.blue, size: 30),
                       ),
                     Marker(
-                      point: LatLng(widget.tripData.origin['lat'], widget.tripData.origin['lng']),
-                      child: const Icon(Icons.location_on, color: Colors.green, size: 40),
+                      point: LatLng(widget.tripData.origin['lat'],
+                          widget.tripData.origin['lng']),
+                      child: const Icon(Icons.location_on,
+                          color: Colors.green, size: 40),
                     ),
                     Marker(
-                      point: LatLng(widget.tripData.destination['lat'], widget.tripData.destination['lng']),
-                      child: const Icon(Icons.flag, color: Colors.red, size: 40),
+                      point: LatLng(widget.tripData.destination['lat'],
+                          widget.tripData.destination['lng']),
+                      child:
+                          const Icon(Icons.flag, color: Colors.red, size: 40),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-
           Expanded(
             flex: 5,
             child: Container(
@@ -244,41 +271,56 @@ class _DriverTripPageState extends State<DriverTripPage> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Hora de salida", style: TextStyle(color: Colors.grey)),
-                          Text(timeStr, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                          const Text("Hora de salida",
+                              style: TextStyle(color: Colors.grey)),
+                          Text(timeStr,
+                              style: const TextStyle(
+                                  fontSize: 24, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                             color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(20)
-                        ),
+                            borderRadius: BorderRadius.circular(20)),
                         child: Text("${_passengersList.length} Pasajeros",
-                            style: TextStyle(color: Colors.blue.shade800, fontWeight: FontWeight.bold)),
+                            style: TextStyle(
+                                color: Colors.blue.shade800,
+                                fontWeight: FontWeight.bold)),
                       )
                     ],
                   ),
                   const Divider(height: 30),
 
-                  const Text("Pasajeros confirmados:", style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text("Pasajeros confirmados:",
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                   Expanded(
                     child: _passengersList.isEmpty
-                        ? const Center(child: Text("Esperando pasajeros...", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)))
+                        ? const Center(
+                            child: Text("Esperando pasajeros...",
+                                style: TextStyle(
+                                    color: Colors.grey,
+                                    fontStyle: FontStyle.italic)))
                         : ListView.builder(
-                      itemCount: _passengersList.length,
-                      itemBuilder: (context, index) {
-                        final p = _passengersList[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: p['photoUrl'] != null ? NetworkImage(p['photoUrl']) : null,
-                            child: p['photoUrl'] == null ? Text(p['fullName'][0]) : null,
+                            itemCount: _passengersList.length,
+                            itemBuilder: (context, index) {
+                              final p = _passengersList[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: p['photoUrl'] != null
+                                      ? NetworkImage(p['photoUrl'])
+                                      : null,
+                                  child: p['photoUrl'] == null
+                                      ? Text(p['fullName'][0])
+                                      : null,
+                                ),
+                                title: Text(p['fullName']),
+                                trailing: const Icon(Icons.check_circle,
+                                    color: Colors.green, size: 20),
+                              );
+                            },
                           ),
-                          title: Text(p['fullName']),
-                          trailing: const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                        );
-                      },
-                    ),
                   ),
 
                   const SizedBox(height: 10),
@@ -289,7 +331,9 @@ class _DriverTripPageState extends State<DriverTripPage> {
                       ElevatedButton.icon(
                         onPressed: _canStartTrip ? _startTrip : null,
                         icon: const Icon(Icons.play_arrow),
-                        label: Text(_canStartTrip ? "COMENZAR VIAJE" : "Espera a la hora"),
+                        label: Text(_canStartTrip
+                            ? "COMENZAR VIAJE"
+                            : "Espera a la hora"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
@@ -304,11 +348,9 @@ class _DriverTripPageState extends State<DriverTripPage> {
                         style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             side: const BorderSide(color: Colors.red),
-                            foregroundColor: Colors.red
-                        ),
+                            foregroundColor: Colors.red),
                       )
-                  ]
-                  else if (_tripStatus == 'in_progress')
+                  ] else if (_tripStatus == 'in_progress')
                     ElevatedButton.icon(
                       onPressed: _finishTrip,
                       icon: const Icon(Icons.flag),
@@ -320,7 +362,11 @@ class _DriverTripPageState extends State<DriverTripPage> {
                       ),
                     )
                   else
-                    const Center(child: Text("Viaje finalizado", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
+                    const Center(
+                        child: Text("Viaje finalizado",
+                            style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold))),
                 ],
               ),
             ),
@@ -373,7 +419,9 @@ class _RatePassengersDialogState extends State<RatePassengersDialog> {
                           return IconButton(
                             icon: Icon(
                               Icons.star,
-                              color: (_ratings[uid] ?? 0) > starIndex ? Colors.amber : Colors.grey,
+                              color: (_ratings[uid] ?? 0) > starIndex
+                                  ? Colors.amber
+                                  : Colors.grey,
                             ),
                             onPressed: () {
                               setState(() {

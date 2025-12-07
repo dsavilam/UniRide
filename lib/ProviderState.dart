@@ -12,7 +12,11 @@ class VehicleModel {
   final String modelo;
   final String color;
 
-  VehicleModel({required this.id, required this.placa, required this.modelo, required this.color});
+  VehicleModel(
+      {required this.id,
+      required this.placa,
+      required this.modelo,
+      required this.color});
 
   factory VehicleModel.fromMap(String id, Map<dynamic, dynamic> map) {
     return VehicleModel(
@@ -22,7 +26,8 @@ class VehicleModel {
       color: map['color'] ?? '',
     );
   }
-  Map<String, dynamic> toJson() => {'placa': placa, 'modelo': modelo, 'color': color};
+  Map<String, dynamic> toJson() =>
+      {'placa': placa, 'modelo': modelo, 'color': color};
 }
 
 class TripModel {
@@ -32,7 +37,8 @@ class TripModel {
   final Map<String, dynamic> vehicle;
   final Map<String, dynamic> origin;
   final Map<String, dynamic> destination;
-  final Map<String, dynamic>? waypoint; // <--- Nuevo: Guardamos el waypoint si existe
+  final Map<String, dynamic>?
+      waypoint; // <--- Nuevo: Guardamos el waypoint si existe
   final double price;
   final int availableSeats;
   final int departureTime;
@@ -56,7 +62,8 @@ class TripModel {
     // Intentar extraer el waypoint del destino si existe
     Map<String, dynamic>? parsedWaypoint;
     if (map['destination'] != null && map['destination']['waypoint'] != null) {
-      parsedWaypoint = Map<String, dynamic>.from(map['destination']['waypoint']);
+      parsedWaypoint =
+          Map<String, dynamic>.from(map['destination']['waypoint']);
     }
 
     return TripModel(
@@ -90,8 +97,15 @@ class ProviderState extends ChangeNotifier {
   List<VehicleModel> _vehicles = [];
   List<TripModel> _foundTrips = [];
   bool _isSearchingTrips = false;
+  List<TripModel> _myDriverTrips = [];
+  List<TripModel> _myPassengerTrips = [];
 
-  final List<String> _allowedDomains = ['uexternado.edu.co', 'urosario.edu.co', 'javeriana.edu.co', 'uniandes.edu.co'];
+  final List<String> _allowedDomains = [
+    'uexternado.edu.co',
+    'urosario.edu.co',
+    'javeriana.edu.co',
+    'uniandes.edu.co'
+  ];
 
   String? get selectedUniversity => _selectedUniversity;
   String? get errorMessage => _errorMessage;
@@ -99,9 +113,16 @@ class ProviderState extends ChangeNotifier {
   List<VehicleModel> get vehicles => _vehicles;
   List<TripModel> get foundTrips => _foundTrips;
   bool get isSearchingTrips => _isSearchingTrips;
+  List<TripModel> get myDriverTrips => _myDriverTrips;
+  List<TripModel> get myPassengerTrips => _myPassengerTrips;
 
-  void selectUniversity(String universityName) { _selectedUniversity = universityName; notifyListeners(); }
-  bool validateEmailDomain(String email) => _allowedDomains.any((d) => email.toLowerCase().trim().endsWith(d));
+  void selectUniversity(String universityName) {
+    _selectedUniversity = universityName;
+    notifyListeners();
+  }
+
+  bool validateEmailDomain(String email) =>
+      _allowedDomains.any((d) => email.toLowerCase().trim().endsWith(d));
 
   Future<void> loadUserProfile() async {
     final uid = _auth.currentUser?.uid;
@@ -112,7 +133,9 @@ class ProviderState extends ChangeNotifier {
         _userProfile = Map<String, dynamic>.from(snapshot.value as Map);
         notifyListeners();
       }
-    } catch (e) { debugPrint("Error perfil: $e"); }
+    } catch (e) {
+      debugPrint("Error perfil: $e");
+    }
   }
 
   // Subir foto
@@ -134,7 +157,9 @@ class ProviderState extends ChangeNotifier {
         return downloadUrl;
       }
       return null;
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
 
   // Eliminar foto
@@ -150,7 +175,9 @@ class ProviderState extends ChangeNotifier {
         notifyListeners();
       }
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> loadVehicles() async {
@@ -165,17 +192,24 @@ class ProviderState extends ChangeNotifier {
       }
       _vehicles = loadedList;
       notifyListeners();
-    } catch (e) { debugPrint("Error vehiculos: $e"); }
+    } catch (e) {
+      debugPrint("Error vehiculos: $e");
+    }
   }
 
   Future<bool> addVehicle(String p, String m, String c) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return false;
     try {
-      await _db.child('users/$uid/vehicles').push().set({'placa': p, 'modelo': m, 'color': c, 'capacidad': 4});
+      await _db
+          .child('users/$uid/vehicles')
+          .push()
+          .set({'placa': p, 'modelo': m, 'color': c, 'capacidad': 4});
       await loadVehicles();
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
 
   // Cambiamos Future<bool> por Future<String?> para retornar el ID del viaje creado
@@ -197,7 +231,8 @@ class ProviderState extends ChangeNotifier {
     try {
       vehicleObj = _vehicles.firstWhere((v) => v.placa == vehiclePlaca);
     } catch (e) {
-      vehicleObj = VehicleModel(id: 'unk', placa: vehiclePlaca, modelo: '', color: '');
+      vehicleObj =
+          VehicleModel(id: 'unk', placa: vehiclePlaca, modelo: '', color: '');
     }
 
     try {
@@ -218,13 +253,13 @@ class ProviderState extends ChangeNotifier {
         "university": _userProfile?['university'] ?? 'Desconocida',
         "vehicle": vehicleObj.toJson(),
         "origin": origin,
-        "destination": { ...destination, "routeDescription": comments },
+        "destination": {...destination, "routeDescription": comments},
         "timing": {
           "departureTime": fullDateTime.millisecondsSinceEpoch,
           "estimatedDurationMin": 0
         },
         "status": "active",
-        "economics": { "price": price, "currency": "COP" },
+        "economics": {"price": price, "currency": "COP"},
         "seats": {
           "initialCapacity": capacity,
           "available": capacity,
@@ -244,16 +279,22 @@ class ProviderState extends ChangeNotifier {
   }
 
   // --- LÓGICA DE BÚSQUEDA AVANZADA CON RECTÁNGULO DE WAYPOINT ---
-  Future<void> searchTrips({required LatLng passengerOrigin, required LatLng passengerDest}) async {
+  Future<void> searchTrips(
+      {required LatLng passengerOrigin, required LatLng passengerDest}) async {
     _isSearchingTrips = true;
     _foundTrips = [];
     notifyListeners();
     final myUid = _auth.currentUser?.uid;
 
     try {
-      final snapshot = await _db.child('trips').orderByChild('status').equalTo('active').get();
+      final snapshot = await _db
+          .child('trips')
+          .orderByChild('status')
+          .equalTo('active')
+          .get();
       if (snapshot.exists) {
-        final Map<dynamic, dynamic> data = snapshot.value as Map<dynamic, dynamic>;
+        final Map<dynamic, dynamic> data =
+            snapshot.value as Map<dynamic, dynamic>;
 
         data.forEach((key, value) {
           final trip = TripModel.fromMap(key, value);
@@ -267,14 +308,18 @@ class ProviderState extends ChangeNotifier {
           final bool destMatch = _isClose(trip.destination, passengerDest, 2.0);
 
           // 2. Verificar WAYPOINT (Si el viaje tiene parada intermedia)
-          bool waypointOriginMatch = false; // ¿El pasajero se sube en el waypoint?
-          bool waypointDestMatch = false;   // ¿El pasajero se baja en el waypoint?
+          bool waypointOriginMatch =
+              false; // ¿El pasajero se sube en el waypoint?
+          bool waypointDestMatch =
+              false; // ¿El pasajero se baja en el waypoint?
 
           if (trip.waypoint != null) {
             // Lógica del Rectángulo: 5km Largo (±2.5km) x 1km Ancho (±0.5km)
             // Como no tenemos vector de dirección, usamos el radio mayor (2.5km) para cubrir el largo.
-            waypointOriginMatch = _isWithinWaypointRectangle(trip.waypoint!, passengerOrigin);
-            waypointDestMatch = _isWithinWaypointRectangle(trip.waypoint!, passengerDest);
+            waypointOriginMatch =
+                _isWithinWaypointRectangle(trip.waypoint!, passengerOrigin);
+            waypointDestMatch =
+                _isWithinWaypointRectangle(trip.waypoint!, passengerDest);
           }
 
           // --- EVALUACIÓN FINAL DEL VIAJE ---
@@ -292,24 +337,158 @@ class ProviderState extends ChangeNotifier {
           }
         });
       }
-    } catch (e) { debugPrint("Error busqueda: $e"); }
-    finally { _isSearchingTrips = false; notifyListeners(); }
+    } catch (e) {
+      debugPrint("Error busqueda: $e");
+    } finally {
+      _isSearchingTrips = false;
+      notifyListeners();
+    }
+  }
+
+  // --- MIS VIAJES (CONDUCTOR) ---
+  Future<void> fetchMyDriverTrips() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final List<TripModel> loaded = [];
+
+      // Helper para procesar snapshot
+      void processSnapshot(DataSnapshot snapshot) {
+        if (snapshot.exists) {
+          final data = snapshot.value as Map<dynamic, dynamic>;
+          data.forEach((k, v) {
+            final trip = TripModel.fromMap(k, v);
+            // IMPORTANTE: Filtramos aquí para asegurar que solo vemos LOS MÍOS
+            if (trip.driverId == uid) {
+              // Evitar duplicados
+              if (!loaded.any((t) => t.id == trip.id)) {
+                loaded.add(trip);
+              }
+            }
+          });
+        }
+      }
+
+      // 1. Traer activos (Esto suele funcionar mejor sin indices complejos)
+      final s1 = await _db
+          .child('trips')
+          .orderByChild('status')
+          .equalTo('active')
+          .get();
+      processSnapshot(s1);
+
+      // 2. Traer en progreso
+      final s2 = await _db
+          .child('trips')
+          .orderByChild('status')
+          .equalTo('in_progress')
+          .get();
+      processSnapshot(s2);
+
+      // Ordenar por fecha
+      loaded.sort((a, b) => a.departureTime.compareTo(b.departureTime));
+      _myDriverTrips = loaded;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error fetching driver trips: $e");
+    }
+  }
+
+  // --- ELIMINAR VIAJE (CONDUCTOR) ---
+  Future<bool> deleteTrip(String tripId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null || tripId.isEmpty) return false;
+
+    try {
+      // Doble verificación: Asegurar que el viaje pertenece al usuario antes de borrar
+      final snapshot = await _db.child('trips/$tripId').get();
+      if (snapshot.exists) {
+        final data = snapshot.value as Map;
+        if (data['driverId'] == uid) {
+          await _db.child('trips/$tripId').remove();
+          // Actualizar lista local
+          _myDriverTrips.removeWhere((t) => t.id == tripId);
+          notifyListeners();
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Error deleting trip: $e");
+      return false;
+    }
+  }
+
+  // --- MIS VIAJES (PASAJERO) ---
+  Future<void> fetchMyPassengerTrips() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final List<TripModel> loaded = [];
+
+      // Helper para procesar snapshot
+      void processSnapshot(DataSnapshot snapshot) {
+        if (snapshot.exists) {
+          final data = snapshot.value as Map<dynamic, dynamic>;
+          data.forEach((k, v) {
+            final trip = TripModel.fromMap(k, v);
+            final passengers = v['seats']?['passengers'] as Map?;
+            if (passengers != null && passengers.containsKey(uid)) {
+              // Evitar duplicados si por alguna razón se solapan (raro aquí)
+              if (!loaded.any((t) => t.id == trip.id)) {
+                loaded.add(trip);
+              }
+            }
+          });
+        }
+      }
+
+      // 1. Traer activos
+      final s1 = await _db
+          .child('trips')
+          .orderByChild('status')
+          .equalTo('active')
+          .get();
+      processSnapshot(s1);
+
+      // 2. Traer en progreso
+      final s2 = await _db
+          .child('trips')
+          .orderByChild('status')
+          .equalTo('in_progress')
+          .get();
+      processSnapshot(s2);
+
+      // Ordenar por fecha
+      loaded.sort((a, b) => a.departureTime.compareTo(b.departureTime));
+      _myPassengerTrips = loaded;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error fetching passenger trips: $e");
+    }
   }
 
   // Helper para distancia simple (km)
-  bool _isClose(Map<String, dynamic> pointData, LatLng userPoint, double radiusKm) {
+  bool _isClose(
+      Map<String, dynamic> pointData, LatLng userPoint, double radiusKm) {
     if (pointData['lat'] == null || pointData['lng'] == null) return false;
     final tripPoint = LatLng(pointData['lat'], pointData['lng']);
-    final double dist = _distanceCalculator.as(LengthUnit.Kilometer, tripPoint, userPoint);
+    final double dist =
+        _distanceCalculator.as(LengthUnit.Kilometer, tripPoint, userPoint);
     return dist <= radiusKm;
   }
 
   // Helper para la lógica del "Rectángulo" en el Waypoint
-  bool _isWithinWaypointRectangle(Map<String, dynamic> waypointData, LatLng userPoint) {
-    if (waypointData['lat'] == null || waypointData['lng'] == null) return false;
+  bool _isWithinWaypointRectangle(
+      Map<String, dynamic> waypointData, LatLng userPoint) {
+    if (waypointData['lat'] == null || waypointData['lng'] == null)
+      return false;
 
     final waypointPoint = LatLng(waypointData['lat'], waypointData['lng']);
-    final double dist = _distanceCalculator.as(LengthUnit.Kilometer, waypointPoint, userPoint);
+    final double dist =
+        _distanceCalculator.as(LengthUnit.Kilometer, waypointPoint, userPoint);
 
     // REGLA: Rectángulo de 5km de largo x 1km de ancho.
     // Interpretación: El largo de 5km implica que el punto más lejano válido está a 2.5km del centro.
@@ -330,10 +509,13 @@ class ProviderState extends ChangeNotifier {
         'passengers/$uid': true,
       });
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
 
-  Future<bool> cancelTripReservation(String tripId, int currentAvailable) async {
+  Future<bool> cancelTripReservation(
+      String tripId, int currentAvailable) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return false;
     try {
@@ -342,41 +524,92 @@ class ProviderState extends ChangeNotifier {
         'passengers/$uid': null,
       });
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
 
-  Future<bool> registerUser({required String nombre, required String correo, required String usuario, required String password, required String celular}) async {
+  Future<bool> registerUser(
+      {required String nombre,
+      required String correo,
+      required String usuario,
+      required String password,
+      required String celular}) async {
     _errorMessage = null;
     try {
-      final cred = await _auth.createUserWithEmailAndPassword(email: correo.trim(), password: password.trim());
+      final cred = await _auth.createUserWithEmailAndPassword(
+          email: correo.trim(), password: password.trim());
       final uid = cred.user!.uid;
-      final check = await _db.child('users').orderByChild('profile/email').equalTo(correo.trim()).get();
-      if (check.exists) { await cred.user!.delete(); _errorMessage = 'Correo ya registrado en BD.'; notifyListeners(); return false; }
+      final check = await _db
+          .child('users')
+          .orderByChild('profile/email')
+          .equalTo(correo.trim())
+          .get();
+      if (check.exists) {
+        await cred.user!.delete();
+        _errorMessage = 'Correo ya registrado en BD.';
+        notifyListeners();
+        return false;
+      }
       if (!cred.user!.emailVerified) await cred.user!.sendEmailVerification();
 
-      final pData = {'fullName': nombre, 'email': correo.trim(), 'username': usuario.trim(), 'university': _selectedUniversity ?? 'Desc', 'phone': celular.trim(), 'rating': 5.0, 'completedTrips': 0};
+      final pData = {
+        'fullName': nombre,
+        'email': correo.trim(),
+        'username': usuario.trim(),
+        'university': _selectedUniversity ?? 'Desc',
+        'phone': celular.trim(),
+        'rating': 5.0,
+        'completedTrips': 0
+      };
       await _db.child('users/$uid/profile').set(pData);
-      _userProfile = pData; _vehicles = []; notifyListeners();
+      _userProfile = pData;
+      _vehicles = [];
+      notifyListeners();
       return true;
-    } on FirebaseAuthException catch (e) { _errorMessage = e.message; notifyListeners(); return false; }
-    catch (e) { _errorMessage = 'Error registro.'; notifyListeners(); return false; }
+    } on FirebaseAuthException catch (e) {
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Error registro.';
+      notifyListeners();
+      return false;
+    }
   }
 
-  Future<bool> loginUser({required String usuario, required String password}) async {
+  Future<bool> loginUser(
+      {required String usuario, required String password}) async {
     _errorMessage = null;
     try {
-      if (!usuario.contains('@')) { _errorMessage = "Usa correo institucional."; notifyListeners(); return false; }
-      final cred = await _auth.signInWithEmailAndPassword(email: usuario.trim(), password: password.trim());
+      if (!usuario.contains('@')) {
+        _errorMessage = "Usa correo institucional.";
+        notifyListeners();
+        return false;
+      }
+      final cred = await _auth.signInWithEmailAndPassword(
+          email: usuario.trim(), password: password.trim());
       if (cred.user != null) await cred.user!.reload();
-      await loadUserProfile(); await loadVehicles();
+      await loadUserProfile();
+      await loadVehicles();
       return true;
-    } on FirebaseAuthException catch (e) { _errorMessage = e.message; notifyListeners(); return false; }
-    catch (e) { _errorMessage = 'Error login.'; notifyListeners(); return false; }
+    } on FirebaseAuthException catch (e) {
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Error login.';
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> logout() async {
     await _auth.signOut();
-    _selectedUniversity = null; _userProfile = null; _vehicles = []; _foundTrips = [];
+    _selectedUniversity = null;
+    _userProfile = null;
+    _vehicles = [];
+    _foundTrips = [];
     notifyListeners();
   }
 
@@ -420,10 +653,8 @@ class ProviderState extends ChangeNotifier {
         // Nuevo promedio ponderado
         double newRating = ((currentRating * trips) + rating) / (trips + 1);
 
-        await userRef.update({
-          'rating': newRating,
-          'completedTrips': trips + 1
-        });
+        await userRef
+            .update({'rating': newRating, 'completedTrips': trips + 1});
         return true;
       }
       return false;
