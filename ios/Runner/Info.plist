@@ -49,5 +49,9 @@
 	<string>Necesitamos tu ubicación para encontrar viajes cercanos y sugerir puntos de encuentro.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Necesitamos tu ubicación para encontrar viajes cercanos y sugerir puntos de encuentro.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Necesitamos acceso a tu galería para que puedas seleccionar una foto de perfil.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Necesitamos acceso a tu cámara para que puedas tomar una foto de perfil.</string>
 </dict>
 </plist>
