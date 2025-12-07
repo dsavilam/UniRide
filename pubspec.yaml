@@ -59,6 +59,7 @@ flutter:
     - assets/logos/Javeriana.png
     - assets/logos/Rosario.png
     - assets/UniRideLogoNOBG.png
+    - assets/car-shape.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

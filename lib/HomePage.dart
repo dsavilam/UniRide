@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
+class Vehicle {
+  final String placa;
+  final String modelo;
+  final String color;
+
+  Vehicle({required this.placa, required this.modelo, required this.color});
+}
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -11,12 +19,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _isPassenger = true; // Default to passenger
-  
+
   // Estados para la vista del conductor
   String? _selectedVehiclePlaca = 'ABC123';
-  List<String> _myVehicles = ['ABC123'];
+  List<Vehicle> _myVehicles = [
+    Vehicle(placa: 'ABC123', modelo: 'Chevrolet Spark', color: 'Rojo'),
+  ];
   bool _showAddVehicleForm = false; // Controla si se muestra el formulario
-  
+
   // Controladores para los campos de texto del formulario
   final TextEditingController _placaController = TextEditingController();
   final TextEditingController _colorController = TextEditingController();
@@ -33,27 +43,34 @@ class _HomePageState extends State<HomePage> {
   // Método para añadir un vehículo
   void _addVehicle() {
     final placa = _placaController.text.trim().toUpperCase();
-    
-    if (placa.isEmpty) {
+    final modelo = _modeloController.text.trim();
+    final color = _colorController.text.trim();
+
+    if (placa.isEmpty || modelo.isEmpty || color.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Por favor ingresa la placa del vehículo")));
+        const SnackBar(content: Text("Por favor completa todos los campos")),
+      );
       return;
     }
-    
+
     if (placa.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("La placa debe tener exactamente 6 caracteres")));
+        const SnackBar(
+          content: Text("La placa debe tener exactamente 6 caracteres"),
+        ),
+      );
       return;
     }
-    
-    if (_myVehicles.contains(placa)) {
+
+    if (_myVehicles.any((v) => v.placa == placa)) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Este vehículo ya está registrado")));
+        const SnackBar(content: Text("Este vehículo ya está registrado")),
+      );
       return;
     }
-    
+
     setState(() {
-      _myVehicles.add(placa);
+      _myVehicles.add(Vehicle(placa: placa, modelo: modelo, color: color));
       _selectedVehiclePlaca = placa;
       _placaController.clear();
       _colorController.clear();
@@ -61,9 +78,10 @@ class _HomePageState extends State<HomePage> {
       _showAddVehicleForm = false; // Ocultar el formulario después de agregar
     });
     ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Vehículo agregado correctamente")));
+      const SnackBar(content: Text("Vehículo agregado correctamente")),
+    );
   }
-  
+
   // Método para seleccionar un vehículo
   void _selectVehicle(String placa) {
     setState(() {
@@ -90,10 +108,11 @@ class _HomePageState extends State<HomePage> {
                     child: Text(
                       '¡Bienvenid@!',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                     ),
                   ),
                   IconButton(
@@ -130,7 +149,7 @@ class _HomePageState extends State<HomePage> {
                             boxShadow: _isPassenger
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
+                                      color: Colors.black.withOpacity(0.1),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
@@ -164,7 +183,7 @@ class _HomePageState extends State<HomePage> {
                             boxShadow: !_isPassenger
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
+                                      color: Colors.black.withOpacity(0.1),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
@@ -217,10 +236,7 @@ class _HomePageState extends State<HomePage> {
 
         // Search Bar
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.grey[200],
             borderRadius: BorderRadius.circular(16),
@@ -306,7 +322,9 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             children: [
               Icon(
-                _showAddVehicleForm ? Icons.remove_circle_outline : Icons.add_circle_outline,
+                _showAddVehicleForm
+                    ? Icons.remove_circle_outline
+                    : Icons.add_circle_outline,
                 color: Colors.black,
               ),
               const SizedBox(width: 8),
@@ -319,7 +337,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        
+
         // Mostrar formulario solo si está expandido
         if (_showAddVehicleForm) ...[
           const SizedBox(height: 20),
@@ -352,7 +370,10 @@ class _HomePageState extends State<HomePage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
               child: const Text('Agregar vehículo'),
             ),
@@ -369,15 +390,22 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               if (_selectedVehiclePlaca == null || _myVehicles.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text("Por favor selecciona un vehículo")));
+                  const SnackBar(
+                    content: Text("Por favor selecciona un vehículo"),
+                  ),
+                );
                 return;
               }
-              debugPrint("Programar viaje presionado con vehículo: $_selectedVehiclePlaca");
+              debugPrint(
+                "Programar viaje presionado con vehículo: $_selectedVehiclePlaca",
+              );
               ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text(
-                          "Programando viaje con vehículo: $_selectedVehiclePlaca")));
+                SnackBar(
+                  content: Text(
+                    "Programando viaje con vehículo: $_selectedVehiclePlaca",
+                  ),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
@@ -422,13 +450,13 @@ class _HomePageState extends State<HomePage> {
       spacing: 12,
       runSpacing: 12,
       alignment: WrapAlignment.center,
-      children: _myVehicles.map((placa) {
-        final isSelected = _selectedVehiclePlaca == placa;
+      children: _myVehicles.map((vehicle) {
+        final isSelected = _selectedVehiclePlaca == vehicle.placa;
         return Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              _selectVehicle(placa);
+              _selectVehicle(vehicle.placa);
             },
             borderRadius: BorderRadius.circular(25),
             child: Container(
@@ -437,48 +465,80 @@ class _HomePageState extends State<HomePage> {
                 color: isSelected ? Colors.grey[200] : Colors.grey[100],
                 borderRadius: BorderRadius.circular(25),
                 border: isSelected
-                    ? Border.all(color: primaryColor.withValues(alpha: 0.5), width: 2)
+                    ? Border.all(color: primaryColor.withOpacity(0.5), width: 2)
                     : Border.all(color: Colors.grey[300]!, width: 1),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
+                          color: Colors.black.withOpacity(0.1),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
-                        )
+                        ),
                       ]
                     : null,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              child: Column(
                 children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: isSelected ? primaryColor : Colors.transparent,
-                      border: Border.all(
-                        color: isSelected ? primaryColor : Colors.grey[600]!,
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: isSelected
-                        ? const Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: 14,
-                          )
-                        : null,
+                  // Imagen del carro
+                  Image.asset(
+                    'assets/car-shape.png',
+                    height: 40,
+                    width: 80,
+                    fit: BoxFit.contain,
+                    color: Colors
+                        .black87, // Optional: tint it if it's an icon/shape
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    placa,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? Colors.black87 : Colors.black54,
-                    ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: isSelected ? primaryColor : Colors.transparent,
+                          border: Border.all(
+                            color: isSelected
+                                ? primaryColor
+                                : Colors.grey[600]!,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: isSelected
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 14,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vehicle.placa,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.black87
+                                  : Colors.black54,
+                            ),
+                          ),
+                          Text(
+                            vehicle.modelo,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
