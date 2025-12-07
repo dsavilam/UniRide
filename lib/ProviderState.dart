@@ -16,7 +16,6 @@ class VehicleModel {
     required this.color,
   });
 
-  // Convertir de Map (Firebase) a Objeto
   factory VehicleModel.fromMap(String id, Map<dynamic, dynamic> map) {
     return VehicleModel(
       id: id,
@@ -29,12 +28,11 @@ class VehicleModel {
 
 // --- PROVIDER STATE ---
 class ProviderState extends ChangeNotifier {
-  // Instancias de Firebase
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _db = FirebaseDatabase.instance.ref();
 
   // -- Variables de Estado --
-  String? _selectedUniversity;
+  String? _selectedUniversity; // Aquí se guardará lo que venga de SelectUniversityPage
   String? _errorMessage;
   Map<String, dynamic>? _userProfile;
   List<VehicleModel> _vehicles = [];
@@ -56,6 +54,8 @@ class ProviderState extends ChangeNotifier {
   // -- Helpers --
   void selectUniversity(String universityName) {
     _selectedUniversity = universityName;
+    // Esto imprime en consola para que verifiques que está llegando el dato correcto
+    debugPrint("Universidad seleccionada: $_selectedUniversity");
     notifyListeners();
   }
 
@@ -64,11 +64,8 @@ class ProviderState extends ChangeNotifier {
     return _allowedDomains.any((domain) => lowerEmail.endsWith(domain));
   }
 
-  // ---------------------------------------------------------------------------
-  // LÓGICA DE DATOS (Perfil y Vehículos)
-  // ---------------------------------------------------------------------------
+  // --- LÓGICA DE DATOS ---
 
-  // Cargar Perfil desde Realtime Database
   Future<void> loadUserProfile() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
@@ -84,7 +81,6 @@ class ProviderState extends ChangeNotifier {
     }
   }
 
-  // Cargar Vehículos desde Realtime Database
   Future<void> loadVehicles() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
@@ -106,7 +102,6 @@ class ProviderState extends ChangeNotifier {
     }
   }
 
-  // Agregar Vehículo a Firebase
   Future<bool> addVehicle(String placa, String modelo, String color) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return false;
@@ -117,10 +112,9 @@ class ProviderState extends ChangeNotifier {
         'placa': placa,
         'modelo': modelo,
         'color': color,
-        'capacidad': 4, // Valor por defecto
+        'capacidad': 4,
       });
 
-      // Recargamos la lista localmente para ver el cambio inmediato
       await loadVehicles();
       return true;
     } catch (e) {
@@ -129,11 +123,8 @@ class ProviderState extends ChangeNotifier {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // LÓGICA DE AUTENTICACIÓN (Registro y Login)
-  // ---------------------------------------------------------------------------
+  // --- LÓGICA DE AUTH ---
 
-  // Registro de Usuario
   Future<bool> registerUser({
     required String nombre,
     required String correo,
@@ -143,7 +134,6 @@ class ProviderState extends ChangeNotifier {
   }) async {
     _errorMessage = null;
     try {
-      // 1. Crear usuario en Auth
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: correo.trim(),
         password: password.trim(),
@@ -151,7 +141,7 @@ class ProviderState extends ChangeNotifier {
 
       final String uid = userCredential.user!.uid;
 
-      // 2. Preparar datos del perfil
+      // Aquí usamos la variable _selectedUniversity que seteamos en la pantalla anterior
       final profileData = {
         'fullName': nombre,
         'email': correo.trim(),
@@ -162,12 +152,10 @@ class ProviderState extends ChangeNotifier {
         'completedTrips': 0,
       };
 
-      // 3. Guardar en Base de Datos
       await _db.child('users/$uid/profile').set(profileData);
 
-      // 4. Actualizar estado local
       _userProfile = profileData;
-      _vehicles = []; // Usuario nuevo no tiene vehículos aún
+      _vehicles = [];
       notifyListeners();
 
       return true;
@@ -188,9 +176,8 @@ class ProviderState extends ChangeNotifier {
     }
   }
 
-  // Inicio de Sesión
   Future<bool> loginUser({
-    required String usuario, // Se asume que es el correo
+    required String usuario,
     required String password,
   }) async {
     _errorMessage = null;
@@ -201,13 +188,11 @@ class ProviderState extends ChangeNotifier {
         return false;
       }
 
-      // 1. Autenticar con Firebase
       await _auth.signInWithEmailAndPassword(
         email: usuario.trim(),
         password: password.trim(),
       );
 
-      // 2. Cargar datos del usuario (Perfil y Vehículos)
       await loadUserProfile();
       await loadVehicles();
 
@@ -231,7 +216,6 @@ class ProviderState extends ChangeNotifier {
     }
   }
 
-  // Cerrar Sesión
   Future<void> logout() async {
     await _auth.signOut();
     _selectedUniversity = null;

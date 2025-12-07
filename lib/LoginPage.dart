@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
 
     // Llamada al login real
     final success = await provider.loginUser(
-      usuario: _usuarioCtrl.text, // Aquí esperamos el Correo
+      usuario: _usuarioCtrl.text,
       password: _passCtrl.text,
     );
 
@@ -85,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                 TextFormField(
                   controller: _usuarioCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Correo Institucional:', // Cambio de etiqueta para ser más claro
+                    labelText: 'Correo Institucional:',
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.cancel, color: Colors.grey),
                       onPressed: () => _usuarioCtrl.clear(),
@@ -131,13 +131,16 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 24),
 
-                // Link a Registro
+                // Link a Registro CORREGIDO
                 Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Text('No tienes una cuenta? ', style: TextStyle(color: Colors.blue.shade700)),
                     GestureDetector(
-                      onTap: () => Navigator.pop(context), // Vuelve al Registro (si venía de allá)
+                      onTap: () {
+                        // CORRECCIÓN: Usamos pushNamed en lugar de pop
+                        Navigator.of(context).pushNamed('/SIGNUP');
+                      },
                       child: Text('Regístrate', style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold)),
                     ),
                   ],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // <--- Importante
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 
@@ -29,7 +29,7 @@ void main() async {
       create: (_) => ProviderState(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Carpooling Universitario',
+        title: 'UniRide',
         // Configuración de localización
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
