@@ -360,6 +360,41 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     }
   }
 
+  Widget _buildSuggestionsList() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _addressSuggestions.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final suggestion = _addressSuggestions[index];
+          return ListTile(
+            leading: const Icon(Icons.location_on_outlined, color: Colors.grey),
+            title: Text(suggestion['display_name'].toString().split(',')[0],
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(suggestion['display_name'],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12)),
+            onTap: () => _selectSuggestion(suggestion),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -523,6 +558,9 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                       hint: "Ej: Universidad de los Andes",
                       onChanged: (val) => _onSearchChanged(val, 0),
                     ),
+                    if (_selectionMode == 0 && _addressSuggestions.isNotEmpty)
+                      _buildSuggestionsList(),
+
                     const SizedBox(height: 20),
 
                     _buildTextFieldWithIcon(
@@ -533,6 +571,9 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                       hint: "Ej: Parque Virrey",
                       onChanged: (val) => _onSearchChanged(val, 2),
                     ),
+                    if (_selectionMode == 2 && _addressSuggestions.isNotEmpty)
+                      _buildSuggestionsList(),
+
                     const SizedBox(height: 20),
 
                     _buildTextFieldWithIcon(
@@ -543,47 +584,8 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                       hint: "Ej: Bulevar Niza",
                       onChanged: (val) => _onSearchChanged(val, 1),
                     ),
-
-                    // --- LISTA DE SUGERENCIAS ---
-                    if (_addressSuggestions.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4))
-                          ],
-                        ),
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _addressSuggestions.length,
-                          separatorBuilder: (context, index) =>
-                              const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final suggestion = _addressSuggestions[index];
-                            return ListTile(
-                              leading: const Icon(Icons.location_on_outlined,
-                                  color: Colors.grey),
-                              title: Text(
-                                  suggestion['display_name']
-                                      .toString()
-                                      .split(',')[0],
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                              subtitle: Text(suggestion['display_name'],
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 12)),
-                              onTap: () => _selectSuggestion(suggestion),
-                            );
-                          },
-                        ),
-                      ),
+                    if (_selectionMode == 1 && _addressSuggestions.isNotEmpty)
+                      _buildSuggestionsList(),
                     const SizedBox(height: 20),
 
                     // Fecha y Hora

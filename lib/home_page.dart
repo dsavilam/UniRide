@@ -120,7 +120,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final response =
-      await http.get(uri, headers: {'User-Agent': 'com.uniride.app'});
+          await http.get(uri, headers: {'User-Agent': 'com.uniride.app'});
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
         if (mounted) {
@@ -186,7 +186,7 @@ class _HomePageState extends State<HomePage> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
-          Text("No se pudo reservar el viaje (quizás ya no hay cupo)")));
+              Text("No se pudo reservar el viaje (quizás ya no hay cupo)")));
     }
   }
 
@@ -258,8 +258,10 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 10), // Ajuste pequeño de margen superior
                 // --- HEADER MEJORADO ---
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Espacio entre texto e imagen
-                  crossAxisAlignment: CrossAxisAlignment.center, // Alineación vertical perfecta
+                  mainAxisAlignment: MainAxisAlignment
+                      .spaceBetween, // Espacio entre texto e imagen
+                  crossAxisAlignment:
+                      CrossAxisAlignment.center, // Alineación vertical perfecta
                   children: [
                     Expanded(
                       child: Column(
@@ -280,9 +282,9 @@ class _HomePageState extends State<HomePage> {
                                 .textTheme
                                 .headlineMedium
                                 ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                                height: 1.1), // Altura de línea ajustada
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                    height: 1.1), // Altura de línea ajustada
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -294,18 +296,22 @@ class _HomePageState extends State<HomePage> {
                     GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/PROFILE'),
                       child: Hero(
-                        tag: 'profile-pic', // Animación bonita si en profile usas Hero también
+                        tag:
+                            'profile-pic', // Animación bonita si en profile usas Hero también
                         child: CircleAvatar(
                           radius: 28, // Tamaño 56px (más grande que antes)
                           backgroundColor: Colors.grey.shade200,
                           // Si hay foto, la muestra. Si no, null.
-                          backgroundImage: (photoUrl != null && photoUrl.toString().isNotEmpty)
+                          backgroundImage: (photoUrl != null &&
+                                  photoUrl.toString().isNotEmpty)
                               ? NetworkImage(photoUrl)
                               : null,
                           // Si NO hay foto, muestra el icono
-                          child: (photoUrl == null || photoUrl.toString().isEmpty)
-                              ? Icon(Icons.person, color: Colors.grey.shade400, size: 32)
-                              : null,
+                          child:
+                              (photoUrl == null || photoUrl.toString().isEmpty)
+                                  ? Icon(Icons.person,
+                                      color: Colors.grey.shade400, size: 32)
+                                  : null,
                         ),
                       ),
                     ),
@@ -335,11 +341,11 @@ class _HomePageState extends State<HomePage> {
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: _isPassenger
                                   ? [
-                                BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2))
-                              ]
+                                      BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2))
+                                    ]
                                   : [],
                             ),
                             child: Center(
@@ -364,11 +370,11 @@ class _HomePageState extends State<HomePage> {
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: !_isPassenger
                                   ? [
-                                BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2))
-                              ]
+                                      BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2))
+                                    ]
                                   : [],
                             ),
                             child: Center(
@@ -418,11 +424,11 @@ class _HomePageState extends State<HomePage> {
             hintText: 'Tu ubicación actual',
             prefixIcon: _isLoadingLocation
                 ? const Padding(
-                padding: EdgeInsets.all(12),
-                child: SizedBox(
-                    width: 10,
-                    height: 10,
-                    child: CircularProgressIndicator(strokeWidth: 2)))
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(strokeWidth: 2)))
                 : const Icon(Icons.my_location, color: Colors.blue),
             suffixIcon: IconButton(
               icon: const Icon(Icons.gps_fixed, color: Colors.grey),
@@ -434,9 +440,13 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none),
             contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
+        // Sugerencias para Origen
+        if (_isSelectingOrigin && _addressSuggestions.isNotEmpty)
+          _buildSuggestionsList(),
+
         const SizedBox(height: 10),
 
         // Input Destino (Búsqueda)
@@ -448,11 +458,11 @@ class _HomePageState extends State<HomePage> {
             prefixIcon: const Icon(CupertinoIcons.search, color: Colors.grey),
             suffixIcon: _isSearchingAddress
                 ? const Padding(
-                padding: EdgeInsets.all(12),
-                child: SizedBox(
-                    width: 10,
-                    height: 10,
-                    child: CircularProgressIndicator(strokeWidth: 2)))
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(strokeWidth: 2)))
                 : null,
             filled: true,
             fillColor: Colors.grey[200],
@@ -460,46 +470,12 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none),
             contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
-
-        // --- LISTA DE SUGERENCIAS ---
-        if (_addressSuggestions.isNotEmpty)
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4))
-              ],
-            ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _addressSuggestions.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final suggestion = _addressSuggestions[index];
-                return ListTile(
-                  leading: const Icon(Icons.location_on_outlined,
-                      color: Colors.grey),
-                  title: Text(
-                      suggestion['display_name'].toString().split(',')[0],
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(suggestion['display_name'],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12)),
-                  onTap: () => _selectSuggestion(suggestion),
-                );
-              },
-            ),
-          ),
+        // Sugerencias para Destino
+        if (!_isSelectingOrigin && _addressSuggestions.isNotEmpty)
+          _buildSuggestionsList(),
 
         const SizedBox(height: 32),
         const Text('Viajes disponibles para ti',
@@ -517,21 +493,56 @@ class _HomePageState extends State<HomePage> {
               child: Text("No se encontraron viajes cercanos a tu ruta.",
                   style: TextStyle(color: Colors.grey)))
         else if (_passengerDestination == null)
-            const Center(
-                child: Text("Ingresa un destino para buscar.",
-                    style: TextStyle(color: Colors.grey)))
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: provider.foundTrips.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final trip = provider.foundTrips[index];
-                return _buildTripCard(trip);
-              },
-            ),
+          const Center(
+              child: Text("Ingresa un destino para buscar.",
+                  style: TextStyle(color: Colors.grey)))
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: provider.foundTrips.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final trip = provider.foundTrips[index];
+              return _buildTripCard(trip);
+            },
+          ),
       ],
+    );
+  }
+
+  Widget _buildSuggestionsList() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _addressSuggestions.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final suggestion = _addressSuggestions[index];
+          return ListTile(
+            leading: const Icon(Icons.location_on_outlined, color: Colors.grey),
+            title: Text(suggestion['display_name'].toString().split(',')[0],
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(suggestion['display_name'],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12)),
+            onTap: () => _selectSuggestion(suggestion),
+          );
+        },
+      ),
     );
   }
 
@@ -735,11 +746,11 @@ class _HomePageState extends State<HomePage> {
                   width: isSelected ? 2.0 : 1.0),
               boxShadow: isSelected
                   ? [
-                BoxShadow(
-                    color: primaryColor.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4))
-              ]
+                      BoxShadow(
+                          color: primaryColor.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4))
+                    ]
                   : [],
             ),
             child: Column(children: [
@@ -751,9 +762,9 @@ class _HomePageState extends State<HomePage> {
               Text(v.placa,
                   style: TextStyle(
                       fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.w500,
+                          isSelected ? FontWeight.bold : FontWeight.w500,
                       color:
-                      isSelected ? Colors.blue.shade900 : Colors.black54)),
+                          isSelected ? Colors.blue.shade900 : Colors.black54)),
             ]),
           ),
         );
@@ -763,9 +774,9 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildInlineFormField(
       {required String label,
-        required TextEditingController controller,
-        int? maxLength,
-        bool showClearIcon = false}) {
+      required TextEditingController controller,
+      int? maxLength,
+      bool showClearIcon = false}) {
     return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(children: [

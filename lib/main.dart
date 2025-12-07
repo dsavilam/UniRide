@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import './ProviderState.dart';
 import './SelectUniversityPage.dart';
 import './SignUpPage.dart';
-import './HomePage.dart';
+import './home_page.dart';
 import './LoginPage.dart';
 import './ProfilePage.dart';
 import './ScheduleTripPage.dart';
