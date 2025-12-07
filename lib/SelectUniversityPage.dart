@@ -17,64 +17,57 @@ class SelectUniversityPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 40),
-
               Text(
                 'Selecciona\ntu universidad',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  height: 1.2,
-                ),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      height: 1.2,
+                    ),
               ),
-
               const SizedBox(height: 40),
-
               Expanded(
-                child: ListView(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 20,
+                  childAspectRatio: 0.8, // Adjust ratio to fit image and text
                   children: [
                     _UniversityCard(
                       name: 'Universidad de los Andes',
                       assetPath: 'assets/logos/Andes.png',
-                      // Nota: Ya no usamos el color para teñir la imagen,
-                      // pero lo dejo por si quieres usarlo luego para bordes o textos.
                       color: Colors.yellow.shade700,
-                        onTap: () {
-                          provider.selectUniversity('Andes');
-                          Navigator.pushNamed(context, '/SIGNUP'); // <--- Agrega esta línea
-                        },
+                      onTap: () {
+                        provider.selectUniversity('Andes');
+                        Navigator.pushNamed(context, '/SIGNUP');
+                      },
                     ),
-                    const SizedBox(height: 30), // Aumenté un poco el espacio entre items
-
                     _UniversityCard(
                       name: 'Pontificia Universidad Javeriana',
                       assetPath: 'assets/logos/Javeriana.png',
                       color: Colors.blue.shade800,
                       onTap: () {
-                        provider.selectUniversity('Andes');
-                        Navigator.pushNamed(context, '/SIGNUP'); // <--- Agrega esta línea
+                        provider.selectUniversity('Javeriana');
+                        Navigator.pushNamed(context, '/SIGNUP');
                       },
                     ),
-                    const SizedBox(height: 30),
-
                     _UniversityCard(
                       name: 'Universidad del Rosario',
                       assetPath: 'assets/logos/Rosario.png',
                       color: Colors.red.shade900,
                       onTap: () {
-                        provider.selectUniversity('Andes');
-                        Navigator.pushNamed(context, '/SIGNUP'); // <--- Agrega esta línea
+                        provider.selectUniversity('Rosario');
+                        Navigator.pushNamed(context, '/SIGNUP');
                       },
                     ),
-                    const SizedBox(height: 30),
-
                     _UniversityCard(
                       name: 'Universidad Externado',
                       assetPath: 'assets/logos/Externado.png',
                       color: Colors.green.shade800,
                       onTap: () {
-                        provider.selectUniversity('Andes');
-                        Navigator.pushNamed(context, '/SIGNUP'); // <--- Agrega esta línea
+                        provider.selectUniversity('Externado');
+                        Navigator.pushNamed(context, '/SIGNUP');
                       },
                     ),
                   ],
@@ -112,27 +105,32 @@ class _UniversityCard extends StatelessWidget {
           children: [
             // Contenedor del Logo
             Container(
-              height: 120, // Aumentado para que se vean más grandes
-              width: 120,  // Definimos ancho fijo para uniformidad
+              height: 100, // Reduced size for grid
+              width: 100,
               decoration: const BoxDecoration(
-                // Si quisieras un borde sutil podrías descomentar esto:
-                // shape: BoxShape.circle,
-                // color: Colors.grey.shade50,
-              ),
+                  // Si quisieras un borde sutil podrías descomentar esto:
+                  // shape: BoxShape.circle,
+                  // color: Colors.grey.shade50,
+                  ),
               child: Image.asset(
                 assetPath,
-                fit: BoxFit.contain, // Esto hace que todos se vean del mismo tamaño visual sin cortarse
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 12),
             // Nombre de la Universidad
-            Text(
-              name,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20, // Aumentado un poquito el tamaño de letra
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+            Expanded(
+              // Use Expanded to prevent overflow
+              child: Text(
+                name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16, // Reduced font size
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
