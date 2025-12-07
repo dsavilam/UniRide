@@ -128,6 +128,10 @@ class ProviderState extends ChangeNotifier {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
     try {
+      // 1. Auto-corregir contadores (Self-healing)
+      await _recalculateUserStats(uid);
+
+      // 2. Cargar perfil actualizado
       final snapshot = await _db.child('users/$uid/profile').get();
       if (snapshot.exists) {
         _userProfile = Map<String, dynamic>.from(snapshot.value as Map);
@@ -634,17 +638,101 @@ class ProviderState extends ChangeNotifier {
     try {
       await _db.child('trips/$tripId').update({'status': newStatus});
 
-      // Si el viaje finalizó, incrementamos el contador del conductor (usuario actual)
+      // Si el viaje finalizó, incrementamos contadores para TODOS (Conductor y Pasajeros)
       if (newStatus == 'finished') {
-        final uid = _auth.currentUser?.uid;
-        if (uid != null) {
-          await _incrementUserTrips(uid);
+        // 1. Obtener datos del viaje para ver quiénes iban
+        final tripSnapshot = await _db.child('trips/$tripId').get();
+        if (tripSnapshot.exists) {
+          final tripData = tripSnapshot.value as Map;
+
+          // A. Incremento Conductor
+          final driverId = tripData['driverId'];
+          if (driverId != null) {
+            await _incrementUserTrips(driverId);
+          }
+
+          // B. Incremento Pasajeros
+          if (tripData['seats'] != null &&
+              tripData['seats']['passengers'] != null) {
+            final passengers = tripData['seats']['passengers'] as Map;
+            for (var pid in passengers.keys) {
+              if (passengers[pid] == true) {
+                await _incrementUserTrips(pid.toString());
+              }
+            }
+          }
         }
       }
       return true;
     } catch (e) {
       debugPrint("Error actualizando estado: $e");
       return false;
+    }
+  }
+
+  // Método robusto para recalcular estadísticas reales cruzando datos de 'trips'
+  Future<void> _recalculateUserStats(String uid) async {
+    try {
+      // Traer todos los viajes finalizados
+      // Nota: En producción esto debería ser una Cloud Function, pero para el hackathon lo hacemos aquí.
+      final snapshot = await _db
+          .child('trips')
+          .orderByChild('status')
+          .equalTo('finished')
+          .get();
+
+      int realCount = 0;
+
+      if (snapshot.exists) {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        data.forEach((k, v) {
+          bool participated = false;
+          // Soy conductor?
+          if (v['driverId'] == uid) participated = true;
+          // Soy pasajero?
+          if (!participated &&
+              v['seats'] != null &&
+              v['seats']['passengers'] != null) {
+            final p = v['seats']['passengers'] as Map;
+            if (p.containsKey(uid) && p[uid] == true) participated = true;
+          }
+
+          if (participated) realCount++;
+        });
+      }
+
+      // Actualizar en BD si es diferente
+      final profileRef = _db.child('users/$uid/profile');
+      final profileSnap = await profileRef.get();
+      if (profileSnap.exists) {
+        final pData = profileSnap.value as Map;
+        int currentDbCount = (pData['completedTrips'] ?? 0) is int
+            ? pData['completedTrips']
+            : int.tryParse(pData['completedTrips'].toString()) ?? 0;
+
+        // Solo escribimos si detectamos discrepancia para ahorrar escrituras
+        if (realCount != currentDbCount) {
+          print("CORRIGIENDO STATS: $uid -> De $currentDbCount a $realCount");
+          await profileRef.update({'completedTrips': realCount});
+
+          // Ajuste defensivo de ratingCount
+          int currentRatingCount = (pData['ratingCount'] ?? 0) is int
+              ? pData['ratingCount']
+              : int.tryParse(pData['ratingCount'].toString()) ?? 0;
+          if (currentRatingCount < realCount) {
+            // Si hay más viajes que calificaciones, es normal.
+            // Pero si hay MENOS viajes que calificaciones, algo anda mal.
+            // (No hacemos nada aquí, solo actualizamos trips).
+          }
+        }
+        // Si el usuario actual es el que estamos recalculando, actualizamos el perfil local
+        if (_auth.currentUser?.uid == uid && _userProfile != null) {
+          _userProfile!['completedTrips'] = realCount;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error recalculating stats: $e");
     }
   }
 
@@ -659,12 +747,7 @@ class ProviderState extends ChangeNotifier {
             : int.tryParse(snapshot.value.toString()) ?? 0;
       }
       await ref.set(current + 1);
-
-      // Si es el usuario actual, actualizamos el estado local
-      if (_userProfile != null && _auth.currentUser?.uid == uid) {
-        _userProfile!['completedTrips'] = current + 1;
-        notifyListeners();
-      }
+      // La actualización local del _userProfile se manejará en _recalculateUserStats o loadUserProfile
     } catch (e) {
       debugPrint("Error incrementing trips: $e");
     }

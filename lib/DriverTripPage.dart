@@ -455,7 +455,7 @@ class _RatePassengersDialogState extends State<RatePassengersDialog> {
             final provider = context.read<ProviderState>();
             for (var entry in _ratings.entries) {
               await provider.rateUser(entry.key, entry.value,
-                  incrementCount: true);
+                  incrementCount: false);
             }
             if (mounted) Navigator.pop(context);
           },
