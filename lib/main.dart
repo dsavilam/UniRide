@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'package:uni_ride/LoginPage.dart';
+
 import './ProviderState.dart';
 import './SelectUniversityPage.dart';
-import './SignUpPage.dart'; // <--- Importante
+import './SignUpPage.dart';
 import './HomePage.dart';
-import './LoginPage.dart'; // <--- Importante
+import './LoginPage.dart';
+import './ProfilePage.dart'; // <--- Importamos
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ProviderState(),
@@ -24,12 +29,13 @@ void main() {
             iconTheme: IconThemeData(color: Colors.black),
           ),
         ),
-        initialRoute: '/SELECT_UNI',
+        initialRoute: '/SELECT_UNI', // OJO: Si ya tienes sesión iniciada, idealmente deberíamos chequearlo aquí, pero por ahora está bien.
         routes: {
           '/SELECT_UNI': (context) => const SelectUniversityPage(),
-          '/SIGNUP': (context) => const SignUpPage(), // <--- Nueva ruta
-          '/HOME': (context) => const HomePage(), // <--- Nueva ruta
-          '/LOGIN': (context) => const LoginPage()
+          '/SIGNUP': (context) => const SignUpPage(),
+          '/HOME': (context) => const HomePage(),
+          '/LOGIN': (context) => const LoginPage(),
+          '/PROFILE': (context) => const ProfilePage(), // <--- Nueva ruta
         },
       ),
     ),

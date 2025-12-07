@@ -116,9 +116,9 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.more_vert, color: Colors.grey[600]),
+                    icon: Icon(Icons.account_circle, color: Colors.grey[600], size: 30), // Cambié a icono de usuario que se ve mejor
                     onPressed: () {
-                      // Acción del menú
+                      Navigator.pushNamed(context, '/PROFILE');
                     },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),

@@ -28,8 +28,10 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     final provider = context.read<ProviderState>();
+
+    // Llamada al login real
     final success = await provider.loginUser(
-      usuario: _usuarioCtrl.text,
+      usuario: _usuarioCtrl.text, // Aquí esperamos el Correo
       password: _passCtrl.text,
     );
 
@@ -38,9 +40,12 @@ class _LoginPageState extends State<LoginPage> {
     if (success && mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil('/HOME', (route) => false);
     } else if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Credenciales inválidas')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.errorMessage ?? 'Error al iniciar sesión'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -50,11 +55,7 @@ class _LoginPageState extends State<LoginPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading:
-            const SizedBox(), // Hide back button if we want to force navigation via "Regístrate" or system back
-        actions: [
-          // Optional: Close button if it's a modal, but standard nav is fine.
-        ],
+        leading: const SizedBox(),
       ),
       body: SafeArea(
         child: Padding(
@@ -65,11 +66,10 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                // Logo
                 Center(
                   child: Image.asset(
                     'assets/UniRideLogoNOBG.png',
-                    height: 80, // Adjust height as needed
+                    height: 80,
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -77,35 +77,25 @@ class _LoginPageState extends State<LoginPage> {
                 const Text(
                   'Iniciar sesión',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
                 ),
                 const SizedBox(height: 40),
 
-                // Usuario
+                // Usuario (Input)
                 TextFormField(
                   controller: _usuarioCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Usuario:',
+                    labelText: 'Correo Institucional:', // Cambio de etiqueta para ser más claro
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.cancel, color: Colors.grey),
                       onPressed: () => _usuarioCtrl.clear(),
                     ),
-                    // Underline border as per image style usually, but standard InputDecoration is fine.
-                    // Image shows a line under the input.
-                    enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey),
-                    ),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.blue),
-                    ),
+                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                    focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Ingresa tu usuario';
+                    if (value == null || value.isEmpty) return 'Ingresa tu correo';
+                    if (!value.contains('@')) return 'Debe ser un correo válido';
                     return null;
                   },
                 ),
@@ -117,77 +107,38 @@ class _LoginPageState extends State<LoginPage> {
                   obscureText: true,
                   decoration: const InputDecoration(
                     labelText: 'Contraseña:',
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.blue),
-                    ),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Ingresa tu contraseña';
-                    return null;
-                  },
+                  validator: (value) => (value == null || value.isEmpty) ? 'Ingresa tu contraseña' : null,
                 ),
                 const SizedBox(height: 40),
 
-                // Botón Iniciar Sesión
+                // Botón Login
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submitLogin,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(
-                      0xFF4A75A2,
-                    ), // A muted blue similar to image
+                    backgroundColor: const Color(0xFF4A75A2),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Iniciar Sesión',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                      height: 20, width: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Iniciar Sesión', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 ),
                 const SizedBox(height: 24),
 
-                // No tienes cuenta? Regístrate
+                // Link a Registro
                 Row(
-                  mainAxisAlignment: MainAxisAlignment
-                      .start, // Image shows left aligned? No, looks like it might be left or center. Let's stick to left as per standard form flow or center.
-                  // Image shows "No tienes una cuenta? Regístrate" aligned left under the button?
-                  // Actually, let's center it for better UI balance, or follow image strictly.
-                  // Image: Text is below button, left aligned.
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    Text(
-                      'No tienes una cuenta? ',
-                      style: TextStyle(color: Colors.blue.shade700),
-                    ),
+                    Text('No tienes una cuenta? ', style: TextStyle(color: Colors.blue.shade700)),
                     GestureDetector(
-                      onTap: () {
-                        // Navigate back to SignUp
-                        Navigator.pop(context);
-                      },
-                      child: Text(
-                        'Regístrate',
-                        style: TextStyle(
-                          color: Colors.blue.shade900,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      onTap: () => Navigator.pop(context), // Vuelve al Registro (si venía de allá)
+                      child: Text('Regístrate', style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

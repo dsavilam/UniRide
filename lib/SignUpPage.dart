@@ -10,10 +10,8 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  // Clave global para validar el formulario
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores de texto
   final _nombreCtrl = TextEditingController();
   final _apellidoCtrl = TextEditingController();
   final _correoCtrl = TextEditingController();
@@ -35,29 +33,38 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _submitRegistration() async {
-    // 1. Validar formulario visualmente
     if (!_formKey.currentState!.validate()) return;
+
+    // Verificar que se haya seleccionado una universidad antes
+    final provider = context.read<ProviderState>();
+    if (provider.selectedUniversity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: No se ha seleccionado universidad.')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
-    final provider = context.read<ProviderState>();
-
-    // 2. Intentar registrar (Simulado en el Provider)
+    // Llamada al registro con TODOS los datos
     final success = await provider.registerUser(
       nombre: "${_nombreCtrl.text} ${_apellidoCtrl.text}",
       correo: _correoCtrl.text,
       usuario: _usuarioCtrl.text,
+      password: _passCtrl.text, // <--- Faltaba esto
+      celular: _celularCtrl.text, // <--- Faltaba esto
     );
 
     setState(() => _isLoading = false);
 
     if (success && mounted) {
-      // 3. Navegar al HOME y borrar el historial para que no puedan volver atrás al registro
       Navigator.of(context).pushNamedAndRemoveUntil('/HOME', (route) => false);
     } else if (mounted) {
+      // Mostramos el mensaje de error específico que viene del Provider
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al registrar. Intenta nuevamente.'),
+        SnackBar(
+          content: Text(provider.errorMessage ?? 'Error al registrar.'),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -65,7 +72,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Obtenemos el provider para validaciones (sin escuchar cambios, solo lectura)
+    // Escuchamos al provider (read está bien aquí porque no redibujamos por cambios externos)
     final provider = context.read<ProviderState>();
 
     return Scaffold(
@@ -83,7 +90,6 @@ class _SignUpPageState extends State<SignUpPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                // Logo
                 Center(
                   child: Image.asset(
                     'assets/UniRideLogoNOBG.png',
@@ -95,11 +101,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 const Text(
                   'Regístrate',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
                 ),
                 const SizedBox(height: 30),
 
@@ -129,11 +131,9 @@ class _SignUpPageState extends State<SignUpPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'El correo es obligatorio';
-                    }
+                    if (value == null || value.isEmpty) return 'El correo es obligatorio';
                     if (!provider.validateEmailDomain(value)) {
-                      return 'Usa un correo institucional válido (ej: @uniandes.edu.co)';
+                      return 'Usa un correo institucional válido';
                     }
                     return null;
                   },
@@ -159,7 +159,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   validator: (value) {
                     if (value == null || value.length < 6) {
-                      return 'La contraseña debe tener al menos 6 caracteres';
+                      return 'Mínimo 6 caracteres';
                     }
                     return null;
                   },
@@ -176,62 +176,35 @@ class _SignUpPageState extends State<SignUpPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Ingresa tu celular';
-                    }
+                    if (value == null || value.isEmpty) return 'Ingresa tu celular';
                     return null;
                   },
                 ),
                 const SizedBox(height: 30),
 
-                // -- Botón Registrarme --
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submitRegistration,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Registrarme',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      height: 20, width: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Registrarme', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
 
                 const SizedBox(height: 20),
-
-                // -- Ya tienes cuenta? --
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text('¿Ya tienes una cuenta? '),
                     GestureDetector(
-                      onTap: () {
-                        // Aquí iría la navegación al Login
-                        Navigator.pushNamed(context, '/LOGIN');
-                      },
-                      child: Text(
-                        'Inicia sesión',
-                        style: TextStyle(
-                          color: Colors.blue.shade700,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      onTap: () => Navigator.pushNamed(context, '/LOGIN'),
+                      child: Text('Inicia sesión', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -243,12 +216,7 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  // Helper para crear inputs simples y no repetir código
-  Widget _buildTextField({
-    required String label,
-    required TextEditingController controller,
-    required IconData icon,
-  }) {
+  Widget _buildTextField({required String label, required TextEditingController controller, required IconData icon}) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
@@ -256,10 +224,7 @@ class _SignUpPageState extends State<SignUpPage> {
         prefixIcon: Icon(icon),
         border: const OutlineInputBorder(),
       ),
-      validator: (value) {
-        if (value == null || value.isEmpty) return 'Este campo es obligatorio';
-        return null;
-      },
+      validator: (value) => (value == null || value.isEmpty) ? 'Este campo es obligatorio' : null,
     );
   }
 }
