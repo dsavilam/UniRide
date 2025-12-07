@@ -21,6 +21,7 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
   final TextEditingController _destinationController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
   final TextEditingController _fareController = TextEditingController();
+  final TextEditingController _capacityController = TextEditingController();
 
   @override
   void dispose() {
@@ -28,6 +29,7 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     _destinationController.dispose();
     _commentsController.dispose();
     _fareController.dispose();
+    _capacityController.dispose();
     super.dispose();
   }
 
@@ -85,6 +87,11 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
     if (_fareController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Por favor ingresa una tarifa")));
+      return;
+    }
+    if (_capacityController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Por favor ingresa la capacidad")));
       return;
     }
 
@@ -159,6 +166,16 @@ class _ScheduleTripPageState extends State<ScheduleTripPage> {
                       controller: _fareController,
                       icon: Icons.attach_money,
                       iconColor: Colors.green,
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Campo Capacidad
+                    _buildTextFieldWithIcon(
+                      label: 'Capacidad:',
+                      controller: _capacityController,
+                      icon: Icons.people,
+                      iconColor: Colors.blue,
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 20),
