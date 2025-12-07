@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uni_ride/LoginPage.dart';
 import './ProviderState.dart';
 import './SelectUniversityPage.dart';
 import './SignUpPage.dart'; // <--- Importante
-import './HomePage.dart';   // <--- Importante
+import './HomePage.dart';
+import './LoginPage.dart'; // <--- Importante
 
 void main() {
   runApp(
@@ -26,7 +28,8 @@ void main() {
         routes: {
           '/SELECT_UNI': (context) => const SelectUniversityPage(),
           '/SIGNUP': (context) => const SignUpPage(), // <--- Nueva ruta
-          '/HOME': (context) => const HomePage(),     // <--- Nueva ruta
+          '/HOME': (context) => const HomePage(), // <--- Nueva ruta
+          '/LOGIN': (context) => const LoginPage()
         },
       ),
     ),
